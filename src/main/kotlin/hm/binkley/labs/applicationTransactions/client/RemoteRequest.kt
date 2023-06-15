@@ -4,9 +4,8 @@ import java.util.*
 
 sealed interface RemoteRequest
 
-// TODO: No tests yet
-// data class OneRead(val query: String) : RemoteRequest
-// data class OneWrite(val query: String) : RemoteRequest
+data class OneRead(val query: String) : RemoteRequest
+data class OneWrite(val query: String) : RemoteRequest
 
 interface WorkUnit : RemoteRequest {
     val id: UUID
