@@ -99,4 +99,49 @@ The key types are:
 - [`UnitOfWork`](src/main/kotlin/hm/binkley/labs/applicationTransactions/client/UnitOfWork.kt)
   &mdash; a container of operations with "all-or-none" semantics
 
+Typical patterns in Kotlin would be:
+
+```kotlin
+when(result = read("ASK A QUESTION")) {
+    is SuccessRemoteResult -> return someGoodThing(result.response)
+    else -> throw handleFailure(result)
+}
+```
+
+```kotlin
+when(result = write("CHANGE SOMETHING")) {
+    is SuccessRemoteResult -> return someGoodThing(result.response)
+    else -> throw handleFailure(result)
+}
+```
+
+```kotlin
+// Multiple operations that need to be done as a group: Write depends on Read
+UnitOfWork().use {
+    var result = read("ASK A QUESTION")
+    if (result is FailureRemoteResult) throw handleFailure(result)
+    var response = result.response
+    if (notTheRightAnswer(response)) return beforeWriting()
+
+    result = write("CHANGE SOMETHING BASED ON $response")
+    if (result is FailureResultResult) throw handleFailure(result)
+    response = result.response
+    
+    return someTransformation(response)
+}
+```
+
+```kotlin
+// Multiple operations that need to be done as a group: Rollback on failure
+UnitOfWork().use {
+    var result = write("CHANGE SOMETHING")
+    if (result is FailureResultResult) {
+        rollback()
+        throw handleFailure(result)
+    }
+
+    // Continue with rest of transaction
+}
+```
+
 ### Remote API

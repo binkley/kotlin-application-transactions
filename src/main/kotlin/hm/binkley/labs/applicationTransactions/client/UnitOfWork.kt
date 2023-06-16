@@ -3,7 +3,7 @@ package hm.binkley.labs.applicationTransactions.client
 import java.util.*
 import java.util.UUID.randomUUID
 
-class UnitOfWork(val expectedUnits: Int) {
+class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
     val id: UUID = randomUUID()
 
     /** 1-based: pre-increment before use */
@@ -44,4 +44,8 @@ class UnitOfWork(val expectedUnits: Int) {
     }
 
     fun rollback() = AbandonUnitOfWork(id)
+
+    override fun close() {
+        TODO("SEND Abandon if not all units sent")
+    }
 }
