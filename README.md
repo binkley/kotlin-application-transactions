@@ -90,4 +90,13 @@ means a single consumer of the queue processing requests.
 
 ### Caller API
 
+The key types are:
+
+- [`RemoteRequest`](src/main/kotlin/hm/binkley/labs/applicationTransactions/client/RemoteRequest.kt)
+  &mdash; an operation sent into the queue
+- [`RemoteResponse`](src/main/kotlin/hm/binkley/labs/applicationTransactions/client/RemoteResult.kt)
+  &mdash; a result from the operation, if any
+- [`UnitOfWork`](src/main/kotlin/hm/binkley/labs/applicationTransactions/client/UnitOfWork.kt)
+  &mdash; a container of operations with "all-or-none" semantics
+
 ### Remote API

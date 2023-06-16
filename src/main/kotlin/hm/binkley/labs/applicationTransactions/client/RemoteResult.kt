@@ -1,15 +1,15 @@
 package hm.binkley.labs.applicationTransactions.client
 
-sealed interface RemoteResponse {
+sealed interface RemoteResult {
     val status: Int
 }
 
-data class SuccessRemoteResponse(
+data class SuccessRemoteResult(
     override val status: Int,
     val response: String,
-) : RemoteResponse
+) : RemoteResult
 
-data class FailureRemoteResponse(
+data class FailureRemoteResult(
     override val status: Int,
     val errorMessage: String,
-) : RemoteResponse
+) : RemoteResult

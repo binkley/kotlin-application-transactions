@@ -8,7 +8,9 @@ sealed interface RemoteRequest
 
 interface RemoteQuery : RemoteRequest {
     val query: String
-    val result: Future<RemoteResponse>
+
+    /** Caller blocks obtaining the result until it is available. */
+    val result: Future<RemoteResult>
 }
 
 /**
@@ -17,7 +19,7 @@ interface RemoteQuery : RemoteRequest {
  */
 data class OneRead(
     override val query: String,
-    override val result: CompletableFuture<RemoteResponse> =
+    override val result: CompletableFuture<RemoteResult> =
         CompletableFuture(),
 ) : RemoteQuery
 
@@ -27,7 +29,7 @@ data class OneRead(
  */
 data class OneWrite(
     override val query: String,
-    override val result: CompletableFuture<RemoteResponse> =
+    override val result: CompletableFuture<RemoteResult> =
         CompletableFuture(),
 ) : RemoteQuery
 
@@ -45,7 +47,7 @@ interface WorkUnit : RemoteQuery {
     /** 1-based */
     val currentUnit: Int
     override val query: String
-    override val result: CompletableFuture<RemoteResponse>
+    override val result: CompletableFuture<RemoteResult>
 }
 
 /**
@@ -58,7 +60,7 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-    override val result: CompletableFuture<RemoteResponse> =
+    override val result: CompletableFuture<RemoteResult> =
         CompletableFuture(),
 ) : WorkUnit
 
@@ -71,7 +73,7 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-    override val result: CompletableFuture<RemoteResponse> =
+    override val result: CompletableFuture<RemoteResult> =
         CompletableFuture(),
 ) : WorkUnit
 

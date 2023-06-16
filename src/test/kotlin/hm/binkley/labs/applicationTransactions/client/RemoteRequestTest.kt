@@ -17,7 +17,7 @@ internal class RemoteRequestTest {
         val read = OneRead("WHAT COLOR IS THE SKY?")
 
         read.query shouldBe "WHAT COLOR IS THE SKY?"
-        read.result should beInstanceOf<Future<RemoteResponse>>()
+        read.result should beInstanceOf<Future<RemoteResult>>()
     }
 
     @Test
@@ -25,6 +25,6 @@ internal class RemoteRequestTest {
         val write = OneWrite("TURN THE SKY CLEAR FOR NIGHT")
 
         write.query shouldBe "TURN THE SKY CLEAR FOR NIGHT"
-        write.result should beInstanceOf<Future<RemoteResponse>>()
+        write.result should beInstanceOf<Future<RemoteResult>>()
     }
 }
