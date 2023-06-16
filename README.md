@@ -26,7 +26,9 @@ Try `./batect run` for a demonstration as CI would.
 This project assumes JDK 17.
 There are no run-time dependencies beyond the Kotlin standard library.
 
-## Motivation
+## Overview
+
+### Motivation
 
 Not all remote data sources provide transactions, yet clients wish to have
 exclusive access for limited periods of time to ensure consistency across
@@ -47,7 +49,17 @@ Important problems to handle when multiple clients update a remote data source:
   A client should be able to undo changes within their transaction without 
   effecting other clients
 
-## Key terms
+### Goals
+
+* Though written in Kotlin, the project may be manually translated into a
+  related language having similar concepts (_eg_, Java, C#, _et al_)
+* Reads may run in parallel.
+  If no write happens, then all reads are idempotent
+* Writes happen in serial.
+  Writes do not step on each other, and no reads happen while writing
+* Units of work never interleave or overlap
+
+### Key terms
 
 - Read &mdash; an idempotent operation that does not modify any remote state
 - Write &mdash; any operation that modifies remote state
@@ -55,15 +67,7 @@ Important problems to handle when multiple clients update a remote data source:
   "all-or-none" semantics, and do not interleave with other operations or 
   units of work
 
-## Goals
-
-* Reads may run in parallel.
-  If no write happens, then all reads are idempotent
-* Writes happen in serial.
-  Writes do not step on each other, and no reads happen while writing
-* Units of work never interleave or overlap 
-
-## Limitations
+### Assumptions and limitations
 
 This project demonstrates one approach to application-side transactions.
 To keep the example within a single local process, there are some
@@ -73,6 +77,8 @@ abstractions that need translation into an actual distributed scenario:
   scenario these would be multiple processes
 - Remote resource &mdash; treated as an independent local thread: in a true
   distributed scenario this would be a remote service
+- The target language has a thread-safe _FIFO queue_ construct supporting 
+  searching through the queue (not just taking the head)
 
 This project _does not_ address distributed transactions; it assumes a
 _single_ remote data source service.
