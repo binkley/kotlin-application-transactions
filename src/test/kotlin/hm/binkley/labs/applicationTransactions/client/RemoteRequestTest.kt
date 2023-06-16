@@ -1,14 +1,23 @@
 package hm.binkley.labs.applicationTransactions.client
 
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.beInstanceOf
 import org.junit.jupiter.api.Test
+import java.util.concurrent.Future
 
-internal class SimpleRemoteRequestTest {
+/**
+ * Tests only single requests, not work units.
+ *
+ * @see UnitOfWorkTest
+ */
+internal class RemoteRequestTest {
     @Test
     fun `should create one read request`() {
         val read = OneRead("WHAT COLOR IS THE SKY?")
 
         read.query shouldBe "WHAT COLOR IS THE SKY?"
+        read.result should beInstanceOf<Future<RemoteResponse>>()
     }
 
     @Test
@@ -16,5 +25,6 @@ internal class SimpleRemoteRequestTest {
         val write = OneWrite("TURN THE SKY CLEAR FOR NIGHT")
 
         write.query shouldBe "TURN THE SKY CLEAR FOR NIGHT"
+        write.result should beInstanceOf<Future<RemoteResponse>>()
     }
 }

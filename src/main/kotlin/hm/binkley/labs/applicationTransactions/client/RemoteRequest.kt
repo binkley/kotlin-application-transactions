@@ -1,23 +1,38 @@
 package hm.binkley.labs.applicationTransactions.client
 
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 
 sealed interface RemoteRequest
+
+interface RemoteQuery : RemoteRequest {
+    val query: String
+    val result: Future<RemoteResponse>
+}
 
 /**
  * A single read request outside a unit of work.
  * Remotely, it runs concurrently with other reads.
  */
-data class OneRead(val query: String) : RemoteRequest
+data class OneRead(
+    override val query: String,
+    override val result: CompletableFuture<RemoteResponse> =
+        CompletableFuture(),
+) : RemoteQuery
 
 /**
  * A single write request outside a unit of work.
  * Remotely, it runs serially, and blocks other requests.
  */
-data class OneWrite(val query: String) : RemoteRequest
+data class OneWrite(
+    override val query: String,
+    override val result: CompletableFuture<RemoteResponse> =
+        CompletableFuture(),
+) : RemoteQuery
 
 /** A single request within a unit of work. */
-interface WorkUnit : RemoteRequest {
+interface WorkUnit : RemoteQuery {
     val id: UUID
 
     /**
@@ -29,7 +44,8 @@ interface WorkUnit : RemoteRequest {
 
     /** 1-based */
     val currentUnit: Int
-    val query: String
+    override val query: String
+    override val result: CompletableFuture<RemoteResponse>
 }
 
 /**
@@ -42,6 +58,8 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
+    override val result: CompletableFuture<RemoteResponse> =
+        CompletableFuture(),
 ) : WorkUnit
 
 /**
@@ -53,7 +71,12 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
+    override val result: CompletableFuture<RemoteResponse> =
+        CompletableFuture(),
 ) : WorkUnit
 
-/** Remotely abandons a unit of work. */
+/**
+ * Remotely abandons a unit of work.
+ * There is no response from remote.
+ */
 class AbandonUnitOfWork(val id: UUID) : RemoteRequest

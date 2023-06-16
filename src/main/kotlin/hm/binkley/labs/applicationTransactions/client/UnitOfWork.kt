@@ -6,7 +6,7 @@ import java.util.UUID.randomUUID
 class UnitOfWork(val expectedUnits: Int) {
     val id: UUID = randomUUID()
 
-    /** 1-based: preincrement before use */
+    /** 1-based: pre-increment before use */
     private var currentUnit = 0
 
     fun read(query: String): ReadWorkUnit {
@@ -18,7 +18,12 @@ class UnitOfWork(val expectedUnits: Int) {
             )
         }
 
-        return ReadWorkUnit(id, expectedUnits, thisUnit, query)
+        return ReadWorkUnit(
+            id,
+            expectedUnits,
+            thisUnit,
+            query,
+        )
     }
 
     fun write(query: String): WriteWorkUnit {
@@ -30,7 +35,12 @@ class UnitOfWork(val expectedUnits: Int) {
             )
         }
 
-        return WriteWorkUnit(id, expectedUnits, thisUnit, query)
+        return WriteWorkUnit(
+            id,
+            expectedUnits,
+            thisUnit,
+            query,
+        )
     }
 
     fun rollback() = AbandonUnitOfWork(id)

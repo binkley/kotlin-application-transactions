@@ -5,6 +5,7 @@ import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
 import org.junit.jupiter.api.Test
+import java.util.concurrent.Future
 
 class UnitOfWorkTest {
     private val unitOfWork = UnitOfWork(3)
@@ -22,6 +23,7 @@ class UnitOfWorkTest {
         read.expectedUnits shouldBe unitOfWork.expectedUnits
         read.currentUnit shouldBe 1
         read.query shouldBe "ASK BOB HIS NAME"
+        read.result should beInstanceOf<Future<RemoteResponse>>()
     }
 
     @Test
@@ -32,6 +34,7 @@ class UnitOfWorkTest {
         write.expectedUnits shouldBe unitOfWork.expectedUnits
         write.currentUnit shouldBe 1
         write.query shouldBe "GIVE BOB 10 QUID"
+        write.result should beInstanceOf<Future<RemoteResponse>>()
     }
 
     @Test
