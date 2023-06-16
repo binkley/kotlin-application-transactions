@@ -38,11 +38,37 @@ class UnitOfWorkTest {
     }
 
     @Test
-    fun `should rollback (abandon) the unit of work`() {
-        val rollback = unitOfWork.rollback()
+    fun `should commit (abandon) the unit of work`() {
+        val rollback = unitOfWork.commit()
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
+        rollback.undo shouldBe emptyList()
+    }
+
+    @Test
+    fun `should rollback (abandon) the unit of work`() {
+        val rollback = unitOfWork.rollback(listOf("UNDO MY CHANGES"))
+
+        rollback should beInstanceOf<AbandonUnitOfWork>()
+        rollback.id shouldBe unitOfWork.id
+        rollback.undo shouldBe listOf("UNDO MY CHANGES")
+    }
+
+    @Test
+    fun `should just close`() {
+        unitOfWork.read("MY BIRTHDAY")
+        unitOfWork.write("MY WEIGHT")
+        unitOfWork.read("MY WEIGHT")
+
+        unitOfWork.close()
+    }
+
+    @Test
+    fun `should throw a bug if not enough work units to close`() {
+        shouldThrow<IllegalStateException> {
+            unitOfWork.close()
+        }
     }
 
     @Test

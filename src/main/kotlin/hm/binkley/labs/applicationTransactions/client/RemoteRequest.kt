@@ -81,4 +81,7 @@ data class WriteWorkUnit(
  * Remotely abandons a unit of work.
  * There is no response from remote.
  */
-class AbandonUnitOfWork(val id: UUID) : RemoteRequest
+class AbandonUnitOfWork(
+    val id: UUID,
+    val undo: List<String> = emptyList(),
+) : RemoteRequest
