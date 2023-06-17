@@ -47,11 +47,11 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
      * Abandons the current unit-of-work with the remote service.
      * Although all remote operations are auto-committed, this is useful when
      * leaving a unit-of-work early on a success path without needing
-     * [rollback].
+     * [abort].
      * No need to call `commit` in the normal path of submitting the expected
      * number of requests.
      */
-    fun commit(): AbandonUnitOfWork {
+    fun cancel(): AbandonUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
         return AbandonUnitOfWork(id)
     }
@@ -65,12 +65,25 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
      *
      * @param undo A list of query instructions
      *
-     * @see commit
+     * @see cancel
      */
-    fun rollback(undo: List<String>): AbandonUnitOfWork {
+    fun abort(undo: List<String>): AbandonUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
         return AbandonUnitOfWork(id, undo)
     }
+
+    /**
+     * Abandons the current unit-of-work with the remote service.
+     * All remote operations are auto-committed.
+     * Use to provide "undo" instructions in support of "all-or-none" semantics.
+     * Note that if abandoning after only performing reads, no [undo]
+     * instructions are needed.
+     *
+     * @param undo Multiple parameters of query instructions
+     *
+     * @see cancel
+     */
+    fun abort(vararg undo: String): AbandonUnitOfWork = abort(undo.asList())
 
     override fun close() {
         if (expectedUnits == currentUnit) return

@@ -38,8 +38,8 @@ class UnitOfWorkTest {
     }
 
     @Test
-    fun `should commit (abandon) the unit of work`() {
-        val rollback = unitOfWork.commit()
+    fun `should cancel (abandon) the unit of work`() {
+        val rollback = unitOfWork.cancel()
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
@@ -47,8 +47,8 @@ class UnitOfWorkTest {
     }
 
     @Test
-    fun `should rollback (abandon) the unit of work`() {
-        val rollback = unitOfWork.rollback(listOf("UNDO MY CHANGES"))
+    fun `should abort (abandon) the unit of work with a list`() {
+        val rollback = unitOfWork.abort(listOf("UNDO MY CHANGES"))
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
@@ -56,7 +56,16 @@ class UnitOfWorkTest {
     }
 
     @Test
-    fun `should just close`() {
+    fun `should abort (abandon) the unit of work with varargs`() {
+        val rollback = unitOfWork.abort("UNDO MY CHANGES")
+
+        rollback should beInstanceOf<AbandonUnitOfWork>()
+        rollback.id shouldBe unitOfWork.id
+        rollback.undo shouldBe listOf("UNDO MY CHANGES")
+    }
+
+    @Test
+    fun `should close normally`() {
         unitOfWork.read("MY BIRTHDAY")
         unitOfWork.write("MY WEIGHT")
         unitOfWork.read("MY WEIGHT")
