@@ -23,6 +23,5 @@ class Client(private val requestQueue: Queue<RemoteRequest>) {
     }
 }
 
-private fun handleFailure(result: FailureRemoteResult): Nothing {
+private fun handleFailure(result: FailureRemoteResult): Nothing =
     error("TODO: Implement an exception scheme: $result")
-}
