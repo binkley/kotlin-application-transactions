@@ -103,14 +103,14 @@ Typical patterns in Kotlin would be:
 
 ```kotlin
 when(result = read("ASK A QUESTION")) {
-    is SuccessRemoteResult -> return someGoodThing(result.response)
+    is SuccessRemoteResult -> return someGoodThing(result.response.get())
     else -> throw handleFailure(result)
 }
 ```
 
 ```kotlin
 when(result = write("CHANGE SOMETHING")) {
-    is SuccessRemoteResult -> return someGoodThing(result.response)
+    is SuccessRemoteResult -> return someGoodThing(result.response.get())
     else -> throw handleFailure(result)
 }
 ```
@@ -120,12 +120,12 @@ when(result = write("CHANGE SOMETHING")) {
 UnitOfWork().use {
     var result = read("ASK A QUESTION")
     if (result is FailureRemoteResult) throw handleFailure(result)
-    var response = result.response
+    var response = result.response.get()
     if (notTheRightAnswer(response)) return beforeWriting()
 
     result = write("CHANGE SOMETHING BASED ON $response")
     if (result is FailureResultResult) throw handleFailure(result)
-    response = result.response
+    response = result.response.get()
     
     return someTransformation(response)
 }
