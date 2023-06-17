@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import java.util.*
+import java.util.UUID
 import java.util.UUID.randomUUID
 
 class UnitOfWork(val expectedUnits: Int) : AutoCloseable {

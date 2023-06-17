@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
