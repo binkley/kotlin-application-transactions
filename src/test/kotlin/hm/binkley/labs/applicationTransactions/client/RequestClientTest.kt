@@ -10,7 +10,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit.SECONDS
 
+@Timeout(value = 1L, unit = SECONDS) // Tests use threads
 internal class RequestClientTest {
     private val threadPool = newSingleThreadExecutor()
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
@@ -22,7 +24,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one read`() {
         runFakeRequestProcessorForQuery(true, "GREEN")
 
@@ -32,7 +33,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one read`() {
         runFakeRequestProcessorForQuery(false)
 
@@ -42,7 +42,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one write`() {
         runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
@@ -52,7 +51,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one write`() {
         runFakeRequestProcessorForQuery(false)
 
@@ -62,7 +60,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one read in a transaction`() {
         runFakeRequestProcessorForQuery(true, "GREEN")
 
@@ -74,7 +71,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one read in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
@@ -86,7 +82,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one write in a transaction`() {
         runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
@@ -98,7 +93,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one write in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
@@ -110,7 +104,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should cancel in a transaction`() {
         val correctRequest = runFakeRequestProcessorForOperation(false)
 
@@ -122,7 +115,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    @Timeout(1000L) // Testing with threads should always do this
     fun `should abort in a transaction`() {
         val correctRequest = runFakeRequestProcessorForOperation(true)
 
