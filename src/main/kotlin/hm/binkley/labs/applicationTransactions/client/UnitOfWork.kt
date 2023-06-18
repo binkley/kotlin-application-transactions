@@ -90,7 +90,7 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
         error(
             "BUG: Fewer work units than expected:" +
                 " expected $expectedUnits; actual: $currentUnit." +
-                " Did you use commit or rollback when needed?"
+                " Did you use cancel or abort when needed?"
         )
     }
 }
