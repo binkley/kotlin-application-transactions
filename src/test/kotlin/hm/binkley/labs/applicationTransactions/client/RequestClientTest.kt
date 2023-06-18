@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Timeout
 import java.lang.Thread.interrupted
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.Executors
+import java.util.concurrent.Executors.newSingleThreadExecutor
 import java.util.concurrent.Future
 
-internal class ClientTest {
+internal class RequestClientTest {
+    private val threadPool = newSingleThreadExecutor()
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
-    private val threadPool = Executors.newSingleThreadExecutor()
-    private val client = Client(requestQueue)
+    private val client = RequestClient(requestQueue)
 
     @AfterEach
     fun cleanup() {

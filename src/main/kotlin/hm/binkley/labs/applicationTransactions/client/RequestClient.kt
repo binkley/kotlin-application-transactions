@@ -2,7 +2,7 @@ package hm.binkley.labs.applicationTransactions.client
 
 import java.util.Queue
 
-class Client(private val requestQueue: Queue<RemoteRequest>) {
+class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
     fun readOne(query: String) = runRequest(OneRead(query))
 
     fun writeOne(query: String) = runRequest(OneWrite(query))
