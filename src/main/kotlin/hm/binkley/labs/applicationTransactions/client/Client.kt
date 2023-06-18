@@ -1,6 +1,5 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import java.io.Closeable
 import java.util.Queue
 
 class Client(private val requestQueue: Queue<RemoteRequest>) {
@@ -10,7 +9,7 @@ class Client(private val requestQueue: Queue<RemoteRequest>) {
 
     fun inTransaction(expectedUnits: Int) = Transaction(expectedUnits)
 
-    inner class Transaction(expectedUnits: Int) : Closeable {
+    inner class Transaction(expectedUnits: Int) : AutoCloseable {
         private val uow = UnitOfWork(expectedUnits)
 
         fun readOne(query: String) = runRequest(uow.readOne(query))
