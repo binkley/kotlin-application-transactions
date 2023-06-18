@@ -85,9 +85,9 @@ _single_ remote data source service.
 
 ## Design
 
-Here "caller" means those offering requests to a shared queue, and "remote" 
+Here "caller" means those offering requests to a shared queue, and "processor" 
 means a single consumer of the queue processing requests.
 
 ### Caller API
 
-### Remote API
+### Processor API
