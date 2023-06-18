@@ -9,22 +9,20 @@ class Client(private val requestQueue: Queue<RemoteRequest>) {
 
     fun inTransaction(expectedUnits: Int) = Transaction(expectedUnits)
 
-    inner class Transaction(expectedUnits: Int) : AutoCloseable {
+    inner class Transaction(expectedUnits: Int) : Transactional<String, Unit> {
         private val uow = UnitOfWork(expectedUnits)
 
-        fun readOne(query: String) = runRequest(uow.readOne(query))
+        override fun readOne(query: String) = runRequest(uow.readOne(query))
 
-        fun writeOne(query: String) = runRequest(uow.writeOne(query))
+        override fun writeOne(query: String) = runRequest(uow.writeOne(query))
 
-        fun cancel() {
+        override fun cancel() {
             requestQueue.offer(uow.cancel())
         }
 
-        fun abort(undo: List<String>) {
+        override fun abort(undo: List<String>) {
             requestQueue.offer(uow.abort(undo))
         }
-
-        fun abort(vararg undo: String) = abort(undo.asList())
 
         override fun close() = uow.close()
     }
