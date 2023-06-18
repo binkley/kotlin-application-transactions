@@ -5,9 +5,11 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import java.lang.Thread.interrupted
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 internal class ClientTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
@@ -22,7 +24,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one read`() {
-        runFakeRequestProcessor(true, "GREEN")
+        runFakeRequestProcessorForQuery(true, "GREEN")
 
         val response = client.readOne("WHAT IS YOUR FAVORITE COLOR?")
 
@@ -32,7 +34,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one read`() {
-        runFakeRequestProcessor(false)
+        runFakeRequestProcessorForQuery(false)
 
         shouldThrow<IllegalStateException> {
             client.readOne("WHAT IS YOUR FAVORITE COLOR?")
@@ -42,7 +44,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one write`() {
-        runFakeRequestProcessor(true, "BLUE IS THE NEW GREEN")
+        runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
         val response = client.writeOne("CHANGE COLORS")
 
@@ -52,7 +54,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one write`() {
-        runFakeRequestProcessor(false)
+        runFakeRequestProcessorForQuery(false)
 
         shouldThrow<IllegalStateException> {
             client.writeOne("CHANGE COLORS")
@@ -62,7 +64,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one read in a transaction`() {
-        runFakeRequestProcessor(true, "GREEN")
+        runFakeRequestProcessorForQuery(true, "GREEN")
 
         val response = client.inTransaction(1).use { txn ->
             txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
@@ -74,7 +76,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one read in a transaction`() {
-        runFakeRequestProcessor(false)
+        runFakeRequestProcessorForQuery(false)
 
         client.inTransaction(1).use { txn ->
             shouldThrow<IllegalStateException> {
@@ -86,7 +88,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one write in a transaction`() {
-        runFakeRequestProcessor(true, "BLUE IS THE NEW GREEN")
+        runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
         val response = client.inTransaction(1).use { txn ->
             txn.writeOne("CHANGE COLORS")
@@ -98,7 +100,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should fail at one write in a transaction`() {
-        runFakeRequestProcessor(false)
+        runFakeRequestProcessorForQuery(false)
 
         client.inTransaction(1).use { txn ->
             shouldThrow<IllegalStateException> {
@@ -110,19 +112,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should cancel in a transaction`() {
-        val correctRequest = CompletableFuture<Boolean>()
-        threadPool.submit {
-            while (true) {
-                val request = requestQueue.poll()
-                if (null == request) continue
-                if (request is AbandonUnitOfWork) {
-                    correctRequest.complete(request.undo.isEmpty())
-                } else {
-                    correctRequest.complete(false)
-                }
-                break
-            }
-        }
+        val correctRequest = runFakeRequestProcessorForOperation(false)
 
         client.inTransaction(1).use { txn ->
             txn.cancel()
@@ -134,19 +124,7 @@ internal class ClientTest {
     @Test
     @Timeout(1000L) // Testing with threads should always do this
     fun `should abort in a transaction`() {
-        val correctRequest = CompletableFuture<Boolean>()
-        threadPool.submit {
-            while (true) {
-                val request = requestQueue.poll()
-                if (null == request) continue
-                if (request is AbandonUnitOfWork) {
-                    correctRequest.complete(request.undo.isNotEmpty())
-                } else {
-                    correctRequest.complete(false)
-                }
-                break
-            }
-        }
+        val correctRequest = runFakeRequestProcessorForOperation(true)
 
         client.inTransaction(1).use { txn ->
             txn.abort("RESET COLORS")
@@ -155,17 +133,17 @@ internal class ClientTest {
         correctRequest.get() shouldBe true
     }
 
-    private fun runFakeRequestProcessor(
+    private fun runFakeRequestProcessorForQuery(
         succeedOrFail: Boolean,
-        response: String = "",
+        responseForSuccess: String = "",
     ) = threadPool.submit {
-        while (true) {
+        while (!interrupted()) {
             val request = requestQueue.poll()
             if (null == request) continue
             val remoteQuery = request as RemoteQuery
             if (succeedOrFail) {
                 remoteQuery.result.complete(
-                    SuccessRemoteResult(200, response)
+                    SuccessRemoteResult(200, responseForSuccess)
                 )
             } else {
                 remoteQuery.result.complete(
@@ -174,5 +152,26 @@ internal class ClientTest {
             }
             break
         }
+    }
+
+    private fun runFakeRequestProcessorForOperation(
+        hasUndoInstruction: Boolean,
+    ): Future<Boolean> {
+        val correctRequest = CompletableFuture<Boolean>()
+        threadPool.submit {
+            while (!interrupted()) {
+                val request = requestQueue.poll()
+                if (null == request) continue
+                if (request is AbandonUnitOfWork) {
+                    correctRequest.complete(
+                        request.undo.isNotEmpty() == hasUndoInstruction
+                    )
+                } else {
+                    correctRequest.complete(false)
+                }
+                break
+            }
+        }
+        return correctRequest
     }
 }

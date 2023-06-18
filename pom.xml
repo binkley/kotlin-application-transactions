@@ -35,7 +35,7 @@
         <!-- @formatter:off -->
         <!-- TODO: Multiple issues with JaCoCo not really understanding
               Kotlin for coverage -->
-        <coverage.branches>87</coverage.branches>
+        <coverage.branches>91</coverage.branches>
         <coverage.instructions>97</coverage.instructions>
         <coverage.lines>98</coverage.lines>
         <coverage.mutation>97</coverage.mutation>
