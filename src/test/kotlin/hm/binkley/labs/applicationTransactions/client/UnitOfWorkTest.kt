@@ -17,7 +17,7 @@ class UnitOfWorkTest {
 
     @Test
     fun `should send a read query`() {
-        val read = unitOfWork.read("ASK BOB HIS NAME")
+        val read = unitOfWork.readOne("ASK BOB HIS NAME")
 
         read.id shouldBe unitOfWork.id
         read.expectedUnits shouldBe unitOfWork.expectedUnits
@@ -28,7 +28,7 @@ class UnitOfWorkTest {
 
     @Test
     fun `should send a write query`() {
-        val write = unitOfWork.write("GIVE BOB 10 QUID")
+        val write = unitOfWork.writeOne("GIVE BOB 10 QUID")
 
         write.id shouldBe unitOfWork.id
         write.expectedUnits shouldBe unitOfWork.expectedUnits
@@ -66,9 +66,9 @@ class UnitOfWorkTest {
 
     @Test
     fun `should close normally`() {
-        unitOfWork.read("MY BIRTHDAY")
-        unitOfWork.write("MY WEIGHT")
-        unitOfWork.read("MY WEIGHT")
+        unitOfWork.readOne("MY BIRTHDAY")
+        unitOfWork.writeOne("MY WEIGHT")
+        unitOfWork.readOne("MY WEIGHT")
 
         unitOfWork.close()
     }
@@ -82,23 +82,23 @@ class UnitOfWorkTest {
 
     @Test
     fun `should throw a bug if more work units than expected for a read`() {
-        unitOfWork.read("BOB")
-        unitOfWork.read("NANCY")
-        unitOfWork.read("ALICE")
+        unitOfWork.readOne("BOB")
+        unitOfWork.readOne("NANCY")
+        unitOfWork.readOne("ALICE")
 
         shouldThrow<IllegalStateException> {
-            unitOfWork.read("POOR CHARLIE")
+            unitOfWork.readOne("POOR CHARLIE")
         }
     }
 
     @Test
     fun `should throw a bug if more work units than expected for a write`() {
-        unitOfWork.read("BOB")
-        unitOfWork.read("NANCY")
-        unitOfWork.read("ALICE")
+        unitOfWork.readOne("BOB")
+        unitOfWork.readOne("NANCY")
+        unitOfWork.readOne("ALICE")
 
         shouldThrow<IllegalStateException> {
-            unitOfWork.write("POOR CHARLIE")
+            unitOfWork.writeOne("POOR CHARLIE")
         }
     }
 }

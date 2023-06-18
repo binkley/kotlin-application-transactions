@@ -9,7 +9,7 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
     /** 1-based: pre-increment before use */
     private var currentUnit = 0
 
-    fun read(query: String): ReadWorkUnit {
+    fun readOne(query: String): ReadWorkUnit {
         val thisUnit = ++currentUnit
         if (expectedUnits < thisUnit) {
             error(
@@ -26,7 +26,7 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
         )
     }
 
-    fun write(query: String): WriteWorkUnit {
+    fun writeOne(query: String): WriteWorkUnit {
         val thisUnit = ++currentUnit
         if (expectedUnits < thisUnit) {
             error(
