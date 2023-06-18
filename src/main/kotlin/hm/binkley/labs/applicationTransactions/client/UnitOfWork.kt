@@ -68,6 +68,10 @@ class UnitOfWork(val expectedUnits: Int) : AutoCloseable {
      * @see cancel
      */
     fun abort(undo: List<String>): AbandonUnitOfWork {
+        require(undo.isNotEmpty()) {
+            "Abort with no undo instructions. Did you mean cancel?"
+        }
+
         currentUnit = expectedUnits // Help `close` find bugs
         return AbandonUnitOfWork(id, undo)
     }

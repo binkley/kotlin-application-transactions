@@ -16,6 +16,16 @@ class Client(private val requestQueue: Queue<RemoteRequest>) {
 
         fun writeOne(query: String) = runRequest(uow.writeOne(query))
 
+        fun cancel() {
+            requestQueue.offer(uow.cancel())
+        }
+
+        fun abort(undo: List<String>) {
+            requestQueue.offer(uow.abort(undo))
+        }
+
+        fun abort(vararg undo: String) = abort(undo.asList())
+
         override fun close() = uow.close()
     }
 

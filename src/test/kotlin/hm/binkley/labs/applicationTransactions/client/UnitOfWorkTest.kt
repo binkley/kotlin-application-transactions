@@ -101,4 +101,11 @@ class UnitOfWorkTest {
             unitOfWork.writeOne("POOR CHARLIE")
         }
     }
+
+    @Test
+    fun `should throw a bug if abort with no undo instructions`() {
+        shouldThrow<IllegalArgumentException> {
+            unitOfWork.abort(emptyList())
+        }
+    }
 }

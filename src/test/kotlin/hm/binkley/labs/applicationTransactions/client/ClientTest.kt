@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 
@@ -104,6 +105,54 @@ internal class ClientTest {
                 txn.writeOne("CHANGE COLORS")
             }
         }
+    }
+
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
+    fun `should cancel in a transaction`() {
+        val correctRequest = CompletableFuture<Boolean>()
+        threadPool.submit {
+            while (true) {
+                val request = requestQueue.poll()
+                if (null == request) continue
+                if (request is AbandonUnitOfWork) {
+                    correctRequest.complete(request.undo.isEmpty())
+                } else {
+                    correctRequest.complete(false)
+                }
+                break
+            }
+        }
+
+        client.inTransaction(1).use { txn ->
+            txn.cancel()
+        }
+
+        correctRequest.get() shouldBe true
+    }
+
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
+    fun `should abort in a transaction`() {
+        val correctRequest = CompletableFuture<Boolean>()
+        threadPool.submit {
+            while (true) {
+                val request = requestQueue.poll()
+                if (null == request) continue
+                if (request is AbandonUnitOfWork) {
+                    correctRequest.complete(request.undo.isNotEmpty())
+                } else {
+                    correctRequest.complete(false)
+                }
+                break
+            }
+        }
+
+        client.inTransaction(1).use { txn ->
+            txn.abort("RESET COLORS")
+        }
+
+        correctRequest.get() shouldBe true
     }
 
     private fun runFakeRequestProcessor(
