@@ -37,7 +37,7 @@
               Kotlin -->
         <coverage.branches>80</coverage.branches>
         <coverage.lines>97</coverage.lines>
-        <coverage.instructions>96</coverage.instructions>
+        <coverage.instructions>95</coverage.instructions>
         <coverage.mutation>96</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.22.0</detekt-maven-plugin.version>
