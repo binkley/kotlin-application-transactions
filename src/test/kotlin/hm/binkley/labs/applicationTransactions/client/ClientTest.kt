@@ -58,6 +58,30 @@ internal class ClientTest {
         }
     }
 
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
+    fun `should succeed at one read in a transaction`() {
+        runFakeRequestProcessor(true, "GREEN")
+
+        val response = client.inTransaction(1).use { txn ->
+            txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
+        }
+
+        response shouldBe "GREEN"
+    }
+
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
+    fun `should succeed at one write in a transaction`() {
+        runFakeRequestProcessor(true, "BLUE IS THE NEW GREEN")
+
+        val response = client.inTransaction(1).use { txn ->
+            txn.readOne("CHANGE COLORS")
+        }
+
+        response shouldBe "BLUE IS THE NEW GREEN"
+    }
+
     private fun runFakeRequestProcessor(
         succeedOrFail: Boolean,
         response: String = "",
