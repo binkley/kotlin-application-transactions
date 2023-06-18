@@ -3,7 +3,7 @@ package hm.binkley.labs.applicationTransactions.client
 import java.util.Queue
 
 class Client(private val requestQueue: Queue<RemoteRequest>) {
-    fun read(query: String): String {
+    fun readOne(query: String): String {
         val request = OneRead(query)
         requestQueue.offer(request)
         return when (val result = request.result.get()) { // Blocking
@@ -12,7 +12,7 @@ class Client(private val requestQueue: Queue<RemoteRequest>) {
         }
     }
 
-    fun write(query: String): String {
+    fun writeOne(query: String): String {
         val request = OneWrite(query)
         requestQueue.offer(request)
         return when (val result = request.result.get()) { // Blocking

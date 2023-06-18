@@ -29,7 +29,7 @@ internal class ClientTest {
             }
         }.start()
 
-        val response = client.read("WHAT IS YOUR FAVORITE COLOR?")
+        val response = client.readOne("WHAT IS YOUR FAVORITE COLOR?")
 
         response shouldBe "GREEN"
     }
@@ -54,7 +54,7 @@ internal class ClientTest {
         }.start()
 
         shouldThrow<IllegalStateException> {
-            client.read("WHAT IS YOUR FAVORITE COLOR?")
+            client.readOne("WHAT IS YOUR FAVORITE COLOR?")
         }
     }
 
@@ -77,7 +77,7 @@ internal class ClientTest {
             }
         }.start()
 
-        val response = client.write("CHANGE COLORS")
+        val response = client.writeOne("CHANGE COLORS")
 
         response shouldBe "BLUE IS THE NEW GREEN"
     }
@@ -102,7 +102,7 @@ internal class ClientTest {
         }.start()
 
         shouldThrow<IllegalStateException> {
-            client.write("WHAT IS YOUR FAVORITE COLOR?")
+            client.writeOne("WHAT IS YOUR FAVORITE COLOR?")
         }
     }
 }
