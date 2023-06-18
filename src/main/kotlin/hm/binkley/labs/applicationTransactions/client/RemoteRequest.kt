@@ -2,7 +2,6 @@ package hm.binkley.labs.applicationTransactions.client
 
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Future
 
 sealed interface RemoteRequest
 
@@ -10,7 +9,7 @@ interface RemoteQuery : RemoteRequest {
     val query: String
 
     /** Caller blocks obtaining the result until it is available. */
-    val result: Future<RemoteResult>
+    val result: CompletableFuture<RemoteResult>
 }
 
 /**
