@@ -54,7 +54,7 @@ internal class ClientTest {
         runFakeRequestProcessor(false)
 
         shouldThrow<IllegalStateException> {
-            client.writeOne("WHAT IS YOUR FAVORITE COLOR?")
+            client.writeOne("CHANGE COLORS")
         }
     }
 
@@ -72,14 +72,38 @@ internal class ClientTest {
 
     @Test
     @Timeout(1000L) // Testing with threads should always do this
+    fun `should fail at one read in a transaction`() {
+        runFakeRequestProcessor(false)
+
+        client.inTransaction(1).use { txn ->
+            shouldThrow<IllegalStateException> {
+                txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
+            }
+        }
+    }
+
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
     fun `should succeed at one write in a transaction`() {
         runFakeRequestProcessor(true, "BLUE IS THE NEW GREEN")
 
         val response = client.inTransaction(1).use { txn ->
-            txn.readOne("CHANGE COLORS")
+            txn.writeOne("CHANGE COLORS")
         }
 
         response shouldBe "BLUE IS THE NEW GREEN"
+    }
+
+    @Test
+    @Timeout(1000L) // Testing with threads should always do this
+    fun `should fail at one write in a transaction`() {
+        runFakeRequestProcessor(false)
+
+        client.inTransaction(1).use { txn ->
+            shouldThrow<IllegalStateException> {
+                txn.writeOne("CHANGE COLORS")
+            }
+        }
     }
 
     private fun runFakeRequestProcessor(

@@ -34,11 +34,11 @@
     <properties>
         <!-- @formatter:off -->
         <!-- TODO: Multiple issues with JaCoCo not really understanding
-              Kotlin -->
-        <coverage.branches>80</coverage.branches>
-        <coverage.lines>97</coverage.lines>
-        <coverage.instructions>95</coverage.instructions>
-        <coverage.mutation>96</coverage.mutation>
+              Kotlin for coverage -->
+        <coverage.branches>87</coverage.branches>
+        <coverage.instructions>97</coverage.instructions>
+        <coverage.lines>98</coverage.lines>
+        <coverage.mutation>97</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.22.0</detekt-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.10</jacoco-maven-plugin.version>
