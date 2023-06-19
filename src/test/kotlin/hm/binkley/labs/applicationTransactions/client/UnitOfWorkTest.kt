@@ -1,5 +1,7 @@
 package hm.binkley.labs.applicationTransactions.client
 
+import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.RemoteResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe

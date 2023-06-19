@@ -1,4 +1,4 @@
-package hm.binkley.labs.applicationTransactions.client
+package hm.binkley.labs.applicationTransactions
 
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test

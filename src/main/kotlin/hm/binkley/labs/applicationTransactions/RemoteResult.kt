@@ -1,4 +1,4 @@
-package hm.binkley.labs.applicationTransactions.client
+package hm.binkley.labs.applicationTransactions
 
 sealed interface RemoteResult {
     val status: Int

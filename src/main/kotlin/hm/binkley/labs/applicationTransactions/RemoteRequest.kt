@@ -1,4 +1,4 @@
-package hm.binkley.labs.applicationTransactions.client
+package hm.binkley.labs.applicationTransactions
 
 import java.util.UUID
 import java.util.concurrent.CompletableFuture

@@ -1,5 +1,11 @@
 package hm.binkley.labs.applicationTransactions.client
 
+import hm.binkley.labs.applicationTransactions.FailureRemoteResult
+import hm.binkley.labs.applicationTransactions.OneRead
+import hm.binkley.labs.applicationTransactions.OneWrite
+import hm.binkley.labs.applicationTransactions.RemoteQuery
+import hm.binkley.labs.applicationTransactions.RemoteRequest
+import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.Queue
 
 class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
