@@ -36,23 +36,23 @@ multiple related operations.
 
 Important problems to handle when multiple clients update a remote data source:
 
-- Ensuring proper ordering of data changes, and avoiding interleaved updates 
+- Ensuring proper ordering of data changes, and avoiding interleaved updates
   that change the final state of data.
   An example:
-  * Client A reads data, runs logic against that, and sends an update based 
-    on the logic
-  * Client B writes data that would change the result of client A's read
-  * Ideal is that operations are in this order: Read\[A], Write\[A], Write\[B]
-  * However, interleaving client requests is possible resulting in: Read\[A],
-    Write\[B], Write\[A]
+    * Client A reads data, runs logic against that, and sends an update based
+      on the logic
+    * Client B writes data that would change the result of client A's read
+    * Ideal is that operations are in this order: Read\[A], Write\[A], Write\[B]
+    * However, interleaving client requests is possible resulting in: Read\[A],
+      Write\[B], Write\[A]
 - Support for _rollback_.
-  A client should be able to undo changes within their transaction without 
+  A client should be able to undo changes within their transaction without
   effecting other clients
 
 ### Goals
 
-* Though written in Kotlin, the project may be manually translated into a
-  related language having similar concepts (_eg_, Java, C#, _et al_)
+* Though written in Kotlin, the project may be manually translated into
+  language/platforms having similar concepts (_eg_, Java, C#, Python, _et al_)
 * Reads may run in parallel.
   If no write happens, then all reads are idempotent
 * Writes happen in serial.
@@ -63,8 +63,8 @@ Important problems to handle when multiple clients update a remote data source:
 
 - Read &mdash; an idempotent operation that does not modify any remote state
 - Write &mdash; any operation that modifies remote state
-- Unit of work &mdash; collections of remote operations that have 
-  "all-or-none" semantics, and do not interleave with other operations or 
+- Unit of work &mdash; collections of remote operations that have
+  "all-or-none" semantics, and do not interleave with other operations or
   units of work
 
 ### Assumptions and limitations
@@ -77,17 +77,23 @@ abstractions that need translation into an actual distributed scenario:
   scenario these would be multiple processes
 - Remote resource &mdash; treated as an independent local thread: in a true
   distributed scenario this would be a remote service
-- The target language has a thread-safe _FIFO queue_ construct supporting 
-  searching through the queue (and not just taking the head)
-- Exception hierarchy &mdash; for languages with exceptions, clients handle 
-  application-specific exceptions rather a generic "it failed" exception
+- The target language/platform has a thread-safe _FIFO queue_ construct
+  supporting searching through the queue (and not just taking the head)
+- Exception hierarchy &mdash; for languages/platforms with exceptions, clients
+  handle application-specific exceptions rather a generic "it failed" exception
+- This project _does not_ address distributed transactions; it assumes a
+  _single_ remote data source service
 
-This project _does not_ address distributed transactions; it assumes a
-_single_ remote data source service.
+The minimal abstractions are:
+
+1. A searchable, concurrent-safe queue for submitting requests for remote 
+   processing
+2. A way to submit concurrent work to a remote resource that can discover 
+   when there is no current work in progress
 
 ## Design
 
-Here "caller" means those offering requests to a shared queue, and "processor" 
+Here "caller" means those offering requests to a shared queue, and "processor"
 means a single consumer of the queue processing requests.
 
 ### Caller API
