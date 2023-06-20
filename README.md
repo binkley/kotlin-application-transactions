@@ -77,8 +77,6 @@ abstractions that need translation into an actual distributed scenario:
   scenario these would be multiple processes
 - Remote resource &mdash; treated as an independent local thread: in a true
   distributed scenario this would be a remote service
-- The target language/platform has a thread-safe _FIFO queue_ construct
-  supporting searching through the queue (and not just taking the head)
 - Exception hierarchy &mdash; for languages/platforms with exceptions, clients
   handle application-specific exceptions rather a generic "it failed" exception
 - This project _does not_ address distributed transactions; it assumes a
