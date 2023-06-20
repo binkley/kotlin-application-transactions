@@ -1,6 +1,7 @@
 package hm.binkley.labs.applicationTransactions.processing
 
 import hm.binkley.labs.applicationTransactions.OneRead
+import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import io.kotest.matchers.should
@@ -30,11 +31,34 @@ internal class RequestProcessorTest {
             )
         )
 
-        val request = OneRead("NAME")
+        val request = OneRead("READ NAME")
         requestQueue.offer(request)
 
         val result = request.result.get()
         result should beInstanceOf<SuccessRemoteResult>()
-        (result as SuccessRemoteResult).response shouldBe "NAME: BOB"
+        (result as SuccessRemoteResult).response shouldBe "READ NAME: BOB"
+    }
+
+    @Test
+    fun `should serialize simple writes`() {
+        val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
+        val remoteResource = RemoteResource { query: String ->
+            SuccessRemoteResult(201, "$query: CHARLIE")
+        }
+        val threadPool = newCachedThreadPool()
+        threadPool.submit(
+            RequestProcessor(
+                requestQueue,
+                remoteResource,
+                threadPool,
+            )
+        )
+
+        val request = OneWrite("WRITE NAME")
+        requestQueue.offer(request)
+
+        val result = request.result.get()
+        result should beInstanceOf<SuccessRemoteResult>()
+        (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
     }
 }
