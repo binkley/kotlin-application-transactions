@@ -8,6 +8,10 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 /**
+ * A JVM thread pool wrapper that provides:
+ * - [areAllDone]
+ * - [awaitCompletion]
+ *
  * See [_How to check if all tasks running on ExecutorService are
  * completed_](https://stackoverflow.com/a/33845730).
  */
@@ -29,10 +33,18 @@ class WorkerPool(private val threadPool: ExecutorService) : AutoCloseable {
     }
 
     /**
-     * Wait for all current submitted tasks to complete (reads) without
-     * checking on their results, ensuring an empty run queue.
+     * Wait for all current submitted tasks (reads) to complete&mdash;ensuring
+     * an empty run queue&mdash;,
+     * and the remote resource is available for exclusive access.
+     *
+     * Note that this sequence:
+     * 1. [ExecutorService.shutdown]
+     * 2. [ExecutorService.awaitTermination]
+     *
+     * is equivalent, but _only one time_: afterward the `ExecutorService` no
+     * longer accepts new tasks.
      */
-    fun waitForCompletion(timeout: Long, unit: TimeUnit) =
+    fun awaitCompletion(timeout: Long, unit: TimeUnit) =
         runQueue.forEach { task ->
             task.get(timeout, unit)
         }

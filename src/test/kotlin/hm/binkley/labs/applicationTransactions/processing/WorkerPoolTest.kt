@@ -22,7 +22,7 @@ internal class WorkerPoolTest {
     @Test
     fun `should start with no work`() {
         workers.areAllDone() shouldBe true
-        workers.waitForCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
     }
 
     @Test
@@ -31,7 +31,7 @@ internal class WorkerPoolTest {
         task.get()
 
         workers.areAllDone() shouldBe true
-        workers.waitForCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
     }
 
     @Test
@@ -42,13 +42,13 @@ internal class WorkerPoolTest {
 
         workers.areAllDone() shouldBe false
         shouldThrow<TimeoutException> {
-            workers.waitForCompletion(1L, MILLISECONDS)
+            workers.awaitCompletion(1L, MILLISECONDS)
         }
 
         realResult.complete(42)
         workerTask.get() shouldBe 42
 
         workers.areAllDone() shouldBe true
-        workers.waitForCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
     }
 }
