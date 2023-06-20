@@ -41,7 +41,8 @@ Important problems to handle when multiple clients update a remote data source:
   An example:
     * Client A reads data, runs logic against that, and sends an update based
       on the logic
-    * Client B writes data that would change the result of client A's read
+    * After A's read but before its write, client B writes data that would 
+      change the result of client A's read
     * Ideal is that operations are in this order: Read\[A], Write\[A], Write\[B]
     * However, interleaving client requests is possible resulting in: Read\[A],
       Write\[B], Write\[A]
