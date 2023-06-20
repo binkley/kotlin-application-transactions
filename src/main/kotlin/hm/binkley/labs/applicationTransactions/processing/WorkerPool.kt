@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * A JVM thread pool wrapper that provides:
@@ -43,11 +44,20 @@ class WorkerPool(private val threadPool: ExecutorService) : AutoCloseable {
      *
      * is equivalent, but _only one time_: afterward the `ExecutorService` no
      * longer accepts new tasks.
+     *
+     * @return if all tasks completed within the [timeout]
      */
-    fun awaitCompletion(timeout: Long, unit: TimeUnit) =
+    fun awaitCompletion(timeout: Long, unit: TimeUnit): Boolean {
+        var allCompleted = true
         runQueue.forEach { task ->
-            task.get(timeout, unit)
+            try {
+                task.get(timeout, unit)
+            } catch (_: TimeoutException) {
+                allCompleted = false
+            }
         }
+        return allCompleted
+    }
 
     @Generated // JaCoCo+Pitest+JUnit not spotting close called in test cleanup
     override fun close() = threadPool.shutdown()

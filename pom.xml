@@ -38,7 +38,7 @@
         <coverage.branches>92</coverage.branches>
         <coverage.instructions>98</coverage.instructions>
         <coverage.lines>98</coverage.lines>
-        <coverage.mutation>94</coverage.mutation>
+        <coverage.mutation>95</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.22.0</detekt-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.10</jacoco-maven-plugin.version>

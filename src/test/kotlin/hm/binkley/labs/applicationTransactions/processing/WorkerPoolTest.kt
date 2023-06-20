@@ -1,6 +1,5 @@
 package hm.binkley.labs.applicationTransactions.processing
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -10,7 +9,6 @@ import java.util.concurrent.Executors.newSingleThreadExecutor
 import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
-import java.util.concurrent.TimeoutException
 
 @Timeout(value = 1, unit = SECONDS)
 internal class WorkerPoolTest {
@@ -22,7 +20,7 @@ internal class WorkerPoolTest {
     @Test
     fun `should start with no work`() {
         workers.areAllDone() shouldBe true
-        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) shouldBe true
     }
 
     @Test
@@ -31,7 +29,7 @@ internal class WorkerPoolTest {
         task.get()
 
         workers.areAllDone() shouldBe true
-        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) shouldBe true
     }
 
     @Test
@@ -41,14 +39,12 @@ internal class WorkerPoolTest {
         val workerTask = workers.submit { realResult.get() }
 
         workers.areAllDone() shouldBe false
-        shouldThrow<TimeoutException> {
-            workers.awaitCompletion(1L, MILLISECONDS)
-        }
+        workers.awaitCompletion(1L, MILLISECONDS) shouldBe false
 
         realResult.complete(42)
         workerTask.get() shouldBe 42
 
         workers.areAllDone() shouldBe true
-        workers.awaitCompletion(1_000_000L, DAYS) // Test timeout
+        workers.awaitCompletion(1_000_000L, DAYS) shouldBe true
     }
 }
