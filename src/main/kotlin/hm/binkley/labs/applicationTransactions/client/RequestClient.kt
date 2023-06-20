@@ -33,7 +33,9 @@ class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
         override fun close() = uow.close()
     }
 
-    private fun runRequest(request: RemoteQuery): String {
+    private fun <T> runRequest(request: T): String
+        where T : RemoteRequest,
+              T : RemoteQuery {
         requestQueue.offer(request)
         return when (val result = request.result.get()) { // Blocking
             is SuccessRemoteResult -> result.response

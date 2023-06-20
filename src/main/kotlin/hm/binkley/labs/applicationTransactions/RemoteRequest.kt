@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface RemoteRequest
 
-interface RemoteQuery : RemoteRequest {
+interface RemoteQuery {
     val query: String
 
     /** Caller blocks obtaining the result until it is available. */
@@ -16,7 +16,7 @@ interface RemoteQuery : RemoteRequest {
  * A single read request outside a unit of work.
  * Remotely, it runs concurrently with other reads.
  */
-data class OneRead(override val query: String) : RemoteQuery {
+data class OneRead(override val query: String) : RemoteRequest, RemoteQuery {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -24,7 +24,7 @@ data class OneRead(override val query: String) : RemoteQuery {
  * A single write request outside a unit of work.
  * Remotely, it runs serially, and blocks other requests.
  */
-data class OneWrite(override val query: String) : RemoteQuery {
+data class OneWrite(override val query: String) : RemoteRequest, RemoteQuery {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -55,7 +55,7 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : WorkUnit {
+) : RemoteRequest, WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -68,7 +68,7 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : WorkUnit {
+) : RemoteRequest, WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
