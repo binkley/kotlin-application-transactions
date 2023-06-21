@@ -6,6 +6,7 @@ import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
+import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WorkUnit
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
@@ -23,6 +24,8 @@ class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remoteResource: RemoteResource,
+    private val retryQueueForWorkInSeconds: Long = 1L,
+    private val retryRemoteInSeconds: Long = 1L,
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
@@ -95,6 +98,20 @@ class RequestProcessor(
         }
     }
 
+    private fun respondWithBug(request: WorkUnit, errorMessage: String) {
+        // TODO: How to log in addition to responding to caller?
+        request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
+    }
+
+    private fun respondWithTimeout(request: WorkUnit) {
+        respondWithBug(
+            request,
+            "Next work unit not found within 1 second" +
+                " last seen work unit: $request" +
+                " (id: ${request.id})"
+        )
+    }
+
     private fun badUnitOfWorkRequest(
         expectedByProcessorFromFirstUnitOfWorkRequest: Int,
         currentInProcessor: Int,
@@ -117,11 +134,11 @@ class RequestProcessor(
                 respondWithBug(
                     work,
                     "Unit of work out of sequence or inconsistent:" +
-                        " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
-                        " actual: ${work.expectedUnits};" +
-                        " expected current call: $currentInProcessor;" +
-                        " actual: ${work.currentUnit}" +
-                        " (id: ${work.id})"
+                            " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
+                            " actual: ${work.expectedUnits};" +
+                            " expected current call: $currentInProcessor;" +
+                            " actual: ${work.currentUnit}" +
+                            " (id: ${work.id})"
                 )
             }
         }
@@ -129,22 +146,20 @@ class RequestProcessor(
         return true // Break out of UoW
     }
 
-    private fun respondWithBug(request: WorkUnit, errorMessage: String) {
-        // TODO: How to log in addition to responding to caller?
-        request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
-    }
+    private fun tryCallingRemote(
+        query: String,
+    ): RemoteResult {
+        val response = remoteResource.call(query)
+        if (429 != response.status) return response
 
-    private fun respondWithTimeout(request: WorkUnit) {
-        respondWithBug(
-            request,
-            "Next work unit not found within 1 second" +
-                " last seen work unit: $request" +
-                " (id: ${request.id})"
-        )
+        // Retry remote after waiting
+        SECONDS.sleep(retryRemoteInSeconds)
+
+        return remoteResource.call(query)
     }
 
     private fun respondToClient(request: RemoteQuery) =
-        request.result.complete(remoteResource.call(request.query))
+        request.result.complete(tryCallingRemote(request.query))
 
     private fun respondToClientInUnitOfWork(request: RemoteQuery) {
         if (request is WriteWorkUnit) waitForReadersToComplete()
@@ -155,7 +170,7 @@ class RequestProcessor(
         var outcome = true
         request.undo.forEach { query ->
             // TODO: Logging? Return to caller?
-            if (remoteResource.call(query) is FailureRemoteResult) {
+            if (tryCallingRemote(query) is FailureRemoteResult) {
                 outcome = false
             }
         }
@@ -163,14 +178,15 @@ class RequestProcessor(
     }
 
     private fun waitForReadersToComplete() {
-        workerPool.awaitCompletion(1L, SECONDS)
+        workerPool.awaitCompletion(retryQueueForWorkInSeconds, SECONDS)
     }
 
     private fun waitForNextWorkUnit(id: UUID): UnitOfWorkScope? {
         val found = pollForNextWorkUnit(id)
         if (null != found) return found
 
-        SECONDS.sleep(1L) // Let client process some, and try again
+        // Let client process some, and try again
+        SECONDS.sleep(retryQueueForWorkInSeconds)
 
         return pollForNextWorkUnit(id)
     }
