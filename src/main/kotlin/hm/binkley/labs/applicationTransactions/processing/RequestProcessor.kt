@@ -74,7 +74,7 @@ class RequestProcessor(
 
                         respondToClientInUnitOfWork(request)
 
-                        when (val found = findNextWorkUnit(work.id)) {
+                        when (val found = waitForNextWorkUnit(work.id)) {
                             null -> {
                                 failWithBugSlowClient(request)
                                 break
@@ -100,8 +100,8 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Unit of work out of sequence:" +
-                    " expected $current; actual: ${request.currentUnit}" +
-                    " (id: ${request.id})"
+                        " expected $current; actual: ${request.currentUnit}" +
+                        " (id: ${request.id})"
             )
         )
     }
@@ -113,7 +113,7 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Next work unit not found within 1 second" +
-                    " (id: ${request.id})"
+                        " (id: ${request.id})"
             )
         )
     }
@@ -121,7 +121,7 @@ class RequestProcessor(
     private fun respondToClient(request: RemoteQuery) =
         request.result.complete(remoteResource.call(request.query))
 
-    private fun respondToClientInUnitOfWork(request: WorkUnit) {
+    private fun respondToClientInUnitOfWork(request: RemoteQuery) {
         if (request is WriteWorkUnit) waitForReadersToComplete()
         respondToClient(request)
     }
@@ -130,19 +130,25 @@ class RequestProcessor(
         workerPool.awaitCompletion(1L, SECONDS)
     }
 
-    private fun findNextWorkUnit(id: UUID): UnitOfWorkScope? {
-        var itr = requestQueue.iterator()
-        while (itr.hasNext()) {
-            val request = itr.next()
-            if (request !is UnitOfWorkScope || id != request.id) continue
-
-            itr.remove()
-            return request
-        }
+    private fun waitForNextWorkUnit(id: UUID): UnitOfWorkScope? {
+        val found = pollForNextWorkUnit(id)
+        if (null != found) return found
 
         SECONDS.sleep(1L) // Let client process some, and try again
 
-        itr = requestQueue.iterator() // refresh
+        return pollForNextWorkUnit(id)
+    }
+
+    /**
+     * Find the next request queue item that is:
+     * 1. A unit of work
+     * 2. Has [id] for that unit of work
+     * and removes that item from the queue
+     *
+     * @return the first matching request, or `null` if none found
+     */
+    private fun pollForNextWorkUnit(id: UUID): UnitOfWorkScope? {
+        val itr = requestQueue.iterator()
         while (itr.hasNext()) {
             val request = itr.next()
             if (request !is UnitOfWorkScope || id != request.id) continue
@@ -150,7 +156,6 @@ class RequestProcessor(
             itr.remove()
             return request
         }
-
         return null
     }
 }
