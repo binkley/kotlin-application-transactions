@@ -19,16 +19,12 @@ class UnitOfWork(val expectedUnits: Int) :
         if (expectedUnits < thisUnit) {
             error(
                 "BUG: More work units than expected:" +
-                    " expected $expectedUnits; actual: $thisUnit"
+                    " expected $expectedUnits; actual: $thisUnit" +
+                    " (id: $id)"
             )
         }
 
-        return ReadWorkUnit(
-            id,
-            expectedUnits,
-            thisUnit,
-            query,
-        )
+        return ReadWorkUnit(id, expectedUnits, thisUnit, query)
     }
 
     override fun writeOne(query: String): WriteWorkUnit {
@@ -36,30 +32,27 @@ class UnitOfWork(val expectedUnits: Int) :
         if (expectedUnits < thisUnit) {
             error(
                 "BUG: More work units than expected:" +
-                    " expected $expectedUnits; actual: $thisUnit"
+                    " expected $expectedUnits; actual: $thisUnit" +
+                    " (id: $id)"
             )
         }
 
-        return WriteWorkUnit(
-            id,
-            expectedUnits,
-            thisUnit,
-            query,
-        )
+        return WriteWorkUnit(id, expectedUnits, thisUnit, query)
     }
 
     override fun cancel(): AbandonUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id)
+        return AbandonUnitOfWork(id, expectedUnits, currentUnit)
     }
 
     override fun abort(undo: List<String>): AbandonUnitOfWork {
         require(undo.isNotEmpty()) {
-            "Abort with no undo instructions. Did you mean cancel?"
+            "Abort with no undo instructions. Did you mean cancel?" +
+                " (id: $id)"
         }
 
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id, undo)
+        return AbandonUnitOfWork(id, expectedUnits, currentUnit, undo)
     }
 
     override fun close() {
@@ -67,7 +60,8 @@ class UnitOfWork(val expectedUnits: Int) :
         error(
             "BUG: Fewer work units than expected:" +
                 " expected $expectedUnits; actual: $currentUnit." +
-                " Did you use cancel or abort when needed?"
+                " Did you use cancel or abort when needed?" +
+                " (id: $id)"
         )
     }
 }

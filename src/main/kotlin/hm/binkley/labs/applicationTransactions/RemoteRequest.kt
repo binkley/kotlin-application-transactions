@@ -5,6 +5,9 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface RemoteRequest
 
+/**
+ * @todo Drop [WorkUnit] and use union types
+ */
 interface RemoteQuery {
     val query: String
 
@@ -28,8 +31,7 @@ data class OneWrite(override val query: String) : RemoteRequest, RemoteQuery {
     override val result = CompletableFuture<RemoteResult>()
 }
 
-/** A single request within a unit of work. */
-interface WorkUnit : RemoteQuery {
+interface UnitOfWorkScope {
     val id: UUID
 
     /**
@@ -41,6 +43,10 @@ interface WorkUnit : RemoteQuery {
 
     /** 1-based */
     val currentUnit: Int
+}
+
+/** A single request within a unit of work. */
+interface WorkUnit : RemoteRequest, RemoteQuery, UnitOfWorkScope {
     override val query: String
     override val result: CompletableFuture<RemoteResult>
 }
@@ -55,7 +61,7 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, WorkUnit {
+) : WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -68,7 +74,7 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, WorkUnit {
+) : WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -76,7 +82,11 @@ data class WriteWorkUnit(
  * Remotely abandons a unit of work.
  * There is no response from remote.
  */
-class AbandonUnitOfWork(
-    val id: UUID,
+data class AbandonUnitOfWork(
+    override val id: UUID,
+    override val expectedUnits: Int,
+    override val currentUnit: Int,
     val undo: List<String> = emptyList(),
-) : RemoteRequest
+) : RemoteRequest, UnitOfWorkScope {
+    val result = CompletableFuture<Boolean>()
+}
