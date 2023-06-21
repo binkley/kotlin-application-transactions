@@ -5,7 +5,10 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface RemoteRequest
 
-interface RemoteQuery : RemoteRequest {
+/**
+ * @todo Drop [WorkUnit] and use union types
+ */
+interface RemoteQuery {
     val query: String
 
     /** Caller blocks obtaining the result until it is available. */
@@ -16,7 +19,7 @@ interface RemoteQuery : RemoteRequest {
  * A single read request outside a unit of work.
  * Remotely, it runs concurrently with other reads.
  */
-data class OneRead(override val query: String) : RemoteQuery {
+data class OneRead(override val query: String) : RemoteRequest, RemoteQuery {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -24,12 +27,11 @@ data class OneRead(override val query: String) : RemoteQuery {
  * A single write request outside a unit of work.
  * Remotely, it runs serially, and blocks other requests.
  */
-data class OneWrite(override val query: String) : RemoteQuery {
+data class OneWrite(override val query: String) : RemoteRequest, RemoteQuery {
     override val result = CompletableFuture<RemoteResult>()
 }
 
-/** A single request within a unit of work. */
-interface WorkUnit : RemoteQuery {
+interface UnitOfWorkScope {
     val id: UUID
 
     /**
@@ -41,6 +43,12 @@ interface WorkUnit : RemoteQuery {
 
     /** 1-based */
     val currentUnit: Int
+
+    fun isLastWorkUnit() = expectedUnits == currentUnit
+}
+
+/** A single request within a unit of work. */
+interface WorkUnit : RemoteRequest, RemoteQuery, UnitOfWorkScope {
     override val query: String
     override val result: CompletableFuture<RemoteResult>
 }
@@ -76,7 +84,11 @@ data class WriteWorkUnit(
  * Remotely abandons a unit of work.
  * There is no response from remote.
  */
-class AbandonUnitOfWork(
-    val id: UUID,
+data class AbandonUnitOfWork(
+    override val id: UUID,
+    override val expectedUnits: Int,
+    override val currentUnit: Int,
     val undo: List<String> = emptyList(),
-) : RemoteRequest
+) : RemoteRequest, UnitOfWorkScope {
+    val result = CompletableFuture<Boolean>()
+}

@@ -45,6 +45,10 @@ class UnitOfWorkTest {
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
+        rollback.expectedUnits shouldBe unitOfWork.expectedUnits
+        // Abandon with intent jumps to the last unit so that "close" can detect
+        // bugs in finishing early
+        rollback.currentUnit shouldBe 3
         rollback.undo shouldBe emptyList()
     }
 
@@ -54,6 +58,10 @@ class UnitOfWorkTest {
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
+        rollback.expectedUnits shouldBe unitOfWork.expectedUnits
+        // Abandon with intent jumps to the last unit so that "close" can detect
+        // bugs in finishing early
+        rollback.currentUnit shouldBe 3
         rollback.undo shouldBe listOf("UNDO MY CHANGES")
     }
 
@@ -63,6 +71,10 @@ class UnitOfWorkTest {
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
+        rollback.expectedUnits shouldBe unitOfWork.expectedUnits
+        // Abandon with intent jumps to the last unit so that "close" can detect
+        // bugs in finishing early
+        rollback.currentUnit shouldBe 3
         rollback.undo shouldBe listOf("UNDO MY CHANGES")
     }
 
