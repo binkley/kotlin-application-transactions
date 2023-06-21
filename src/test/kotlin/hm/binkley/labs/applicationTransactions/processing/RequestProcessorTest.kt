@@ -132,7 +132,6 @@ internal class RequestProcessorTest {
         requestQueue.offer(martian)
 
         martian.result.get() should beInstanceOf<FailureRemoteResult>()
-
         remoteResource.calls.shouldBeEmpty()
     }
 
