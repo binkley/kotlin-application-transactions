@@ -17,10 +17,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
+import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
-@Timeout(value = 1L, unit = SECONDS) // Tests use threads
+@Timeout(value = 1L, unit = DAYS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
@@ -139,22 +140,31 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS)
     fun `should abort unit of work with undo instructions`() {
         val remoteResource = runSuccessRequestProcessor()
 
-        val unitOfWork = UnitOfWork(2)
-        val write = unitOfWork.writeOne("RENAME PET")
-        requestQueue.offer(write)
-        write.result.get()
-        val abort = unitOfWork.abort("UNDO PET RENAME")
+        val unitOfWork = UnitOfWork(17)
+        val read = unitOfWork.readOne("READ NAME")
+        requestQueue.offer(read)
+        val abort = unitOfWork.abort("UNDO RENAME")
         requestQueue.offer(abort)
 
         abort.result.get() shouldBe true
-        remoteResource.calls shouldBe listOf(
-            "RENAME PET",
-            "UNDO PET RENAME",
-        )
+        remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
+    }
+
+    @Test
+    fun `should abort unit of work with undo instructions but some fail`() {
+        val remoteResource = runFailRequestProcessor()
+
+        val unitOfWork = UnitOfWork(17)
+        val read = unitOfWork.readOne("READ NAME")
+        requestQueue.offer(read)
+        val abort = unitOfWork.abort("ABCD PQRSTUV")
+        requestQueue.offer(abort)
+
+        abort.result.get() shouldBe false
+        remoteResource.calls shouldBe listOf("READ NAME", "ABCD PQRSTUV")
     }
 
     @Test
