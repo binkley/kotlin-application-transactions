@@ -196,7 +196,7 @@ internal class RequestProcessorTest {
         }
 
     private fun runBusyButSucceedSecondTryRequestProcessor():
-            RecordingRemoteResource {
+        RecordingRemoteResource {
         var firstTry = true
         return recordingRequestProcessor { query ->
             if (firstTry) {
@@ -209,7 +209,7 @@ internal class RequestProcessorTest {
     }
 
     private fun runBusyButFailSecondTryRequestProcessor():
-            RecordingRemoteResource {
+        RecordingRemoteResource {
         var firstTry = true
         return recordingRequestProcessor { query ->
             if (firstTry) {

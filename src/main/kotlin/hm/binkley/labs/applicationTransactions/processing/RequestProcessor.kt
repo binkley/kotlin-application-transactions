@@ -78,16 +78,15 @@ class RequestProcessor(
 
                         respondToClientInUnitOfWork(request)
 
-                        if (work.isLastWorkUnit()) {
-                            continue@top // Break out of UoW
-                        }
+                        // Break out of UoW
+                        if (work.isLastWorkUnit()) continue@top
 
+                        // Break out of UoW
                         when (val found = waitForNextWorkUnit(work.id)) {
-                            null -> {
-                                respondWithTimeout(request)
-                                continue@top // Break out of UoW
-                            }
-
+                            // TODO: Log that caller is too slow in calling
+                            //  again?
+                            //  There is no request to respond to
+                            null -> continue@top // Break out of UoW
                             else -> work = found
                         }
 
@@ -101,15 +100,6 @@ class RequestProcessor(
     private fun respondWithBug(request: WorkUnit, errorMessage: String) {
         // TODO: How to log in addition to responding to caller?
         request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
-    }
-
-    private fun respondWithTimeout(request: WorkUnit) {
-        respondWithBug(
-            request,
-            "Next work unit not found within 1 second" +
-                " last seen work unit: $request" +
-                " (id: ${request.id})"
-        )
     }
 
     private fun badUnitOfWorkRequest(
@@ -134,11 +124,11 @@ class RequestProcessor(
                 respondWithBug(
                     work,
                     "Unit of work out of sequence or inconsistent:" +
-                            " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
-                            " actual: ${work.expectedUnits};" +
-                            " expected current call: $currentInProcessor;" +
-                            " actual: ${work.currentUnit}" +
-                            " (id: ${work.id})"
+                        " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
+                        " actual: ${work.expectedUnits};" +
+                        " expected current call: $currentInProcessor;" +
+                        " actual: ${work.currentUnit}" +
+                        " (id: ${work.id})"
                 )
             }
         }
