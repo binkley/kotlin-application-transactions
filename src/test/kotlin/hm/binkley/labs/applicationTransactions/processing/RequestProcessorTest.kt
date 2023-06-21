@@ -83,6 +83,20 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    fun `should fail if remote is busy`() {
+        val remoteResource = runBusyRequestProcessor()
+
+        val unitOfWork = UnitOfWork(1)
+        val request = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(request)
+
+        val result = request.result.get()
+        result should beInstanceOf<FailureRemoteResult>()
+        result.status shouldBe 429
+        remoteResource.calls shouldBe listOf("WRITE NAME")
+    }
+
+    @Test
     @Timeout(value = 2L, unit = SECONDS)
     fun `should cancel unit of work`() {
         val remoteResource = runSuccessRequestProcessor()
