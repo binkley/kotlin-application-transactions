@@ -75,8 +75,9 @@ class RequestProcessor(
 
                         respondToClientInUnitOfWork(request)
 
-                        if (work.isLastWorkUnit())
+                        if (work.isLastWorkUnit()) {
                             continue@top // Break out of UoW
+                        }
 
                         when (val found = waitForNextWorkUnit(work.id)) {
                             null -> {

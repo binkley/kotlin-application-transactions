@@ -3,10 +3,12 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
+import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.client.UnitOfWork
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
@@ -15,7 +17,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
-import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
@@ -114,6 +115,25 @@ internal class RequestProcessorTest {
             "RENAME PET",
             "UNDO PET RENAME",
         )
+    }
+
+    @Test
+    @Timeout(value = 2L, unit = SECONDS)
+    fun `should fail sending a crazy work item`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(2)
+        val martian = ReadWorkUnit(
+            unitOfWork.id,
+            unitOfWork.expectedUnits,
+            -1, // Obviously a bad work unit number
+            "I AM NOT THE PET YOU ARE LOOKING FOR"
+        )
+        requestQueue.offer(martian)
+
+        martian.result.get() should beInstanceOf<FailureRemoteResult>()
+
+        remoteResource.calls.shouldBeEmpty()
     }
 
     private class RecordingRemoteResource(
