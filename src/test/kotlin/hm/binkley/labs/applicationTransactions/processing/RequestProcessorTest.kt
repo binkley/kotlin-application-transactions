@@ -96,6 +96,25 @@ internal class RequestProcessorTest {
         remoteResource.calls shouldBe listOf("FAVORITE COLOR")
     }
 
+    @Test
+    @Timeout(value = 2L, unit = SECONDS) // TODO: Back to SECONDS when passing
+    fun `should abort unit of work with undo instructions`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(2)
+        val write = unitOfWork.readOne("RENAME PET")
+        requestQueue.offer(write)
+        write.result.get()
+        val abort = unitOfWork.abort("UNDO PET RENAME")
+        requestQueue.offer(abort)
+
+        abort.result.get() shouldBe true
+        remoteResource.calls shouldBe listOf(
+            "RENAME PET",
+            "UNDO PET RENAME",
+        )
+    }
+
     private class RecordingRemoteResource(
         private val realRemote: RemoteResource,
     ) : RemoteResource {

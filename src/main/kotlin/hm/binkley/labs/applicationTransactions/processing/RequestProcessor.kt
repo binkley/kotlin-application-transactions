@@ -48,7 +48,6 @@ class RequestProcessor(
 
                 is AbandonUnitOfWork -> {
                     // TODO: Remove this case and let it fall to the next one
-
                     // BUG: Log? Abandon without any reads/writes
                     // There is no client completion for this
                     request.result.complete(false)
@@ -63,7 +62,7 @@ class RequestProcessor(
 
                     do {
                         if (work is AbandonUnitOfWork) {
-                            work.result.complete(true)
+                            runRollback(work)
                             break
                         }
 
@@ -122,6 +121,17 @@ class RequestProcessor(
     private fun respondToClientInUnitOfWork(request: RemoteQuery) {
         if (request is WriteWorkUnit) waitForReadersToComplete()
         respondToClient(request)
+    }
+
+    private fun runRollback(request: AbandonUnitOfWork) {
+        var outcome = true
+        request.undo.forEach { query ->
+            // TODO: Logging? Return to caller?
+            if (remoteResource.call(query) is FailureRemoteResult) {
+                outcome = false
+            }
+        }
+        request.result.complete(outcome)
     }
 
     private fun waitForReadersToComplete() {
