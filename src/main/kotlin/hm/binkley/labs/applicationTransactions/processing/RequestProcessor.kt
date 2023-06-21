@@ -85,8 +85,6 @@ class RequestProcessor(
 
                         ++current
                     } while (current <= work.expectedUnits)
-
-                    println("LEAVING UOW LOOP")
                 }
             }
         }
@@ -100,8 +98,8 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Unit of work out of sequence:" +
-                        " expected $current; actual: ${request.currentUnit}" +
-                        " (id: ${request.id})"
+                    " expected $current; actual: ${request.currentUnit}" +
+                    " (id: ${request.id})"
             )
         )
     }
@@ -113,7 +111,7 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Next work unit not found within 1 second" +
-                        " (id: ${request.id})"
+                    " (id: ${request.id})"
             )
         )
     }
