@@ -27,7 +27,7 @@ class RequestProcessor(
     private val workerPool = WorkerPool(threadPool)
 
     override fun run() { // Never exits until process shut down
-        while (!interrupted()) {
+        top@ while (!interrupted()) {
             when (val request = requestQueue.poll()) {
                 null -> continue // Busy loop for new requests
 
@@ -48,35 +48,40 @@ class RequestProcessor(
 
                 is AbandonUnitOfWork -> {
                     // TODO: Remove this case and let it fall to the next one
+                    // We're seeing an abandon before a transaction is begun
+                    // with a read or write
                     // BUG: Log? Abandon without any reads/writes
-                    // There is no client completion for this
                     request.result.complete(false)
                     continue
                 }
 
                 is WorkUnit -> {
                     // First unit of work -- starts the transaction.
-                    // Runs in a loop looking for further work units
+                    // Runs in a loop looking for further work units in this
+                    // transaction
                     var work = request as UnitOfWorkScope
+                    val expected = work.expectedUnits
                     var current = 1
 
                     do {
                         if (work is AbandonUnitOfWork) {
                             runRollback(work)
-                            break
+                            continue@top // Break out of UoW
                         }
 
-                        if (current != work.currentUnit) {
-                            failWithBugOutOfOrderWorkUnits(request, current)
-                            break
+                        if (badUnitOfWorkRequest(expected, current, request)) {
+                            continue@top // Break out of UoW
                         }
 
                         respondToClientInUnitOfWork(request)
 
+                        if (work.isLastWorkUnit())
+                            continue@top // Break out of UoW
+
                         when (val found = waitForNextWorkUnit(work.id)) {
                             null -> {
-                                failWithBugSlowClient(request)
-                                break
+                                respondWithTimeout(request)
+                                continue@top // Break out of UoW
                             }
 
                             else -> work = found
@@ -89,29 +94,51 @@ class RequestProcessor(
         }
     }
 
-    private fun failWithBugOutOfOrderWorkUnits(
-        request: WorkUnit,
-        current: Int,
-    ) {
-        request.result.complete(
-            FailureRemoteResult(
-                500,
-                "BUG: Unit of work out of sequence:" +
-                    " expected $current; actual: ${request.currentUnit}" +
-                    " (id: ${request.id})"
-            )
-        )
+    private fun badUnitOfWorkRequest(
+        expectedByProcessorFromFirstUnitOfWorkRequest: Int,
+        currentInProcessor: Int,
+        request: RemoteRequest,
+    ): Boolean {
+        val work = request as UnitOfWorkScope
+
+        if (currentInProcessor == work.currentUnit &&
+            expectedByProcessorFromFirstUnitOfWorkRequest >= work.currentUnit &&
+            expectedByProcessorFromFirstUnitOfWorkRequest == work.expectedUnits
+        ) {
+            return false
+        }
+
+        when (work) {
+            // TODO: Logging
+            is AbandonUnitOfWork -> work.result.complete(false)
+
+            is WorkUnit -> {
+                respondWithBug(
+                    work,
+                    "Unit of work out of sequence or inconsistent:" +
+                        " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
+                        " actual: ${work.expectedUnits};" +
+                        " expected current call: $currentInProcessor;" +
+                        " actual: ${work.currentUnit}" +
+                        " (id: ${work.id})"
+                )
+            }
+        }
+
+        return true // Break out of UoW
     }
 
-    private fun failWithBugSlowClient(
-        request: WorkUnit,
-    ) {
-        request.result.complete(
-            FailureRemoteResult(
-                500,
-                "BUG: Next work unit not found within 1 second" +
-                    " (id: ${request.id})"
-            )
+    private fun respondWithBug(request: WorkUnit, errorMessage: String) {
+        // TODO: How to log in addition to responding to caller?
+        request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
+    }
+
+    private fun respondWithTimeout(request: WorkUnit) {
+        respondWithBug(
+            request,
+            "Next work unit not found within 1 second" +
+                " last seen work unit: $request" +
+                " (id: ${request.id})"
         )
     }
 

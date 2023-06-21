@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
+import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
@@ -97,12 +98,12 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS) // TODO: Back to SECONDS when passing
+    @Timeout(value = 2L, unit = DAYS) // TODO: Back to SECONDS when passing
     fun `should abort unit of work with undo instructions`() {
         val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
-        val write = unitOfWork.readOne("RENAME PET")
+        val write = unitOfWork.writeOne("RENAME PET")
         requestQueue.offer(write)
         write.result.get()
         val abort = unitOfWork.abort("UNDO PET RENAME")

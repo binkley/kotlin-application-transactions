@@ -43,6 +43,8 @@ interface UnitOfWorkScope {
 
     /** 1-based */
     val currentUnit: Int
+
+    fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
 /** A single request within a unit of work. */
