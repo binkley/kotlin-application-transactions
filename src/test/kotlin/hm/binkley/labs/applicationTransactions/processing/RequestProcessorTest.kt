@@ -98,7 +98,7 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = DAYS) // TODO: Back to SECONDS when passing
+    @Timeout(value = 2L, unit = SECONDS)
     fun `should abort unit of work with undo instructions`() {
         val remoteResource = runSuccessRequestProcessor()
 
