@@ -176,7 +176,24 @@ internal class RequestProcessorTest {
             unitOfWork.id,
             unitOfWork.expectedUnits,
             -1, // Obviously a bad work unit number
-            "I AM NOT THE PET YOU ARE LOOKING FOR"
+            "I AM NOT THE DROID YOU ARE LOOKING FOR"
+        )
+        requestQueue.offer(martian)
+
+        martian.result.get() should beInstanceOf<FailureRemoteResult>()
+        remoteResource.calls.shouldBeEmpty()
+    }
+
+    @Test
+    fun `should fail sending out of order work units`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(2)
+        val martian = ReadWorkUnit(
+            unitOfWork.id,
+            unitOfWork.expectedUnits,
+            2, // Not the first work unit
+            "I AM NOT THE DROID YOU ARE LOOKING FOR"
         )
         requestQueue.offer(martian)
 

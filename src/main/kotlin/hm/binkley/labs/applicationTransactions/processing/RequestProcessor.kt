@@ -103,15 +103,15 @@ class RequestProcessor(
     }
 
     private fun badUnitOfWorkRequest(
-        expectedByProcessorFromFirstUnitOfWorkRequest: Int,
+        expectedByFirstWorkUnit: Int,
         currentInProcessor: Int,
         request: RemoteRequest,
     ): Boolean {
         val work = request as UnitOfWorkScope
 
         if (currentInProcessor == work.currentUnit &&
-            expectedByProcessorFromFirstUnitOfWorkRequest >= work.currentUnit &&
-            expectedByProcessorFromFirstUnitOfWorkRequest == work.expectedUnits
+            expectedByFirstWorkUnit >= work.currentUnit &&
+            expectedByFirstWorkUnit == work.expectedUnits
         ) {
             return false
         }
@@ -124,7 +124,7 @@ class RequestProcessor(
                 respondWithBug(
                     work,
                     "Unit of work out of sequence or inconsistent:" +
-                        " expected total calls: $expectedByProcessorFromFirstUnitOfWorkRequest;" +
+                        " expected total calls: $expectedByFirstWorkUnit;" +
                         " actual: ${work.expectedUnits};" +
                         " expected current call: $currentInProcessor;" +
                         " actual: ${work.currentUnit}" +
