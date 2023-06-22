@@ -97,4 +97,44 @@ means a single consumer of the queue processing requests.
 
 ### Caller API
 
+At a top level use
+[RequestClient](src/main/kotlin/hm/binkley/labs/applicationTransactions/client/RequestClient.kt).
+An example session might be:
+
+```kotlin
+val client = RequestClient(requestQueue) // Queue is shared with processor
+
+val data = client.readOne("A REMOTE READ")
+if ("OK" == data)
+    client.writeOne("CHANGE SOME DATA") // Changes are "auto committed"
+
+client.inTransaction(2 /* expected max calls */).use { txn ->
+    val status = txn.readOne("CHECK SOMETHING")
+    if ("OK" != status) {
+        txn.cancel() // Example of early return from transaction
+        return
+    }
+    
+    val result = txn.writeOne("CHANGE SOMETHING")
+    if (result is FailRemoteResult) {
+        txn.abort("SOME UNDO INSTRUCTION") // Example of manual rollback
+    }
+    
+    // Transaction is automatically "closed"
+}
+```
+
 ### Processor API
+
+Start processing requests by running the processor on an independent thread:
+
+```kotlin
+threadPool.submit(
+    RequestProcessor(requestQueue, threadPool, remoteResource)
+)
+```
+
+where specific to your language `requestQueue` is a thread-safe FIFO queue 
+that is searchable, `threadPool` is a facility for starting and managing 
+threads, and `remoteResource` represents calling the remote resource you 
+would like to provide transactions for. 

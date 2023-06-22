@@ -253,7 +253,7 @@ internal class RequestProcessorTest {
     ): RecordingRemoteResource {
         val remoteResource = RecordingRemoteResource(remoteResult)
         threadPool.submit(
-            RequestProcessor(requestQueue, threadPool, remoteResource, 1L)
+            RequestProcessor(requestQueue, threadPool, remoteResource)
         )
         return remoteResource
     }
