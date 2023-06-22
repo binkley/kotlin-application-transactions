@@ -50,10 +50,10 @@ class RequestProcessor(
                 }
 
                 is AbandonUnitOfWork -> {
-                    // TODO: Remove this case and let it fall to the next one
-                    // We're seeing an abandon before a transaction is begun
-                    // with a read or write
-                    // BUG: Log? Abandon without any reads/writes
+                    // TODO: Remove this case and let it fall to unit of work
+                    //  An abandon before a transaction is begun with a read
+                    //  or write
+                    //  BUG: Log? Abandon without any reads/writes
                     request.result.complete(false)
                     continue
                 }
@@ -62,8 +62,8 @@ class RequestProcessor(
                     // First unit of work -- starts the transaction.
                     // Runs in a loop looking for further work units in this
                     // transaction
-                    val startWork = request as UnitOfWorkScope
-                    var currentWork = request as UnitOfWorkScope
+                    val startWork = request
+                    var currentWork: UnitOfWorkScope = request
                     var expectedCurrent = 1
 
                     while (true) {
@@ -73,7 +73,7 @@ class RequestProcessor(
                         }
 
                         if (badWorkUnit(
-                                startWork as WorkUnit,
+                                startWork,
                                 currentWork as WorkUnit,
                                 expectedCurrent,
                             )
