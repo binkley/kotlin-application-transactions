@@ -212,7 +212,7 @@ internal class RequestProcessorTest {
         val martian = ReadWorkUnit(
             unitOfWork.id,
             unitOfWork.expectedUnits,
-            -1, // Obviously a bad work unit number
+            -88, // Obviously a bad work unit number
             "I AM NOT THE DROID YOU ARE LOOKING FOR"
         )
         requestQueue.offer(martian)

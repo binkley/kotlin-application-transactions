@@ -32,7 +32,6 @@ class RequestProcessor(
     override fun run() { // Never exits until process shut down
         top@ while (!interrupted()) {
             val request = requestQueue.poll()
-            if (null != request) println("REQUEST: $request")
             when (request) {
                 null -> continue // Busy loop for new requests
 
@@ -128,11 +127,11 @@ class RequestProcessor(
 
         respondWithBug(
             work,
-            "Unit of work out of sequence or inconsistent:" +
-                    " request: $work;" +
-                    " expected id: $expectedId;" +
-                    " expected total work units: $expectedUnits;" +
-                    " expected current work: $expectedCurrent"
+            "Bad work unit" +
+                " [expected id: $expectedId;" +
+                " expected total work units: $expectedUnits;" +
+                " expected current work: $expectedCurrent]: " +
+                " request: $work"
         )
 
         return true // Break out of UoW
