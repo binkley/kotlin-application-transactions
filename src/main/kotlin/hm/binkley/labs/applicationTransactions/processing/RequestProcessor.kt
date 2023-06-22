@@ -62,22 +62,20 @@ class RequestProcessor(
                     // First unit of work -- starts the transaction.
                     // Runs in a loop looking for further work units in this
                     // transaction
-                    var work = request as UnitOfWorkScope
-                    val expectedId = work.id
-                    val expectedUnits = work.expectedUnits
+                    val startWork = request as UnitOfWorkScope
+                    var currentWork = request as UnitOfWorkScope
                     var expectedCurrent = 1
 
                     while (true) {
-                        if (work is AbandonUnitOfWork) {
-                            runRollback(work)
+                        if (currentWork is AbandonUnitOfWork) {
+                            runRollback(currentWork)
                             continue@top // Break out of UoW
                         }
 
                         if (badWorkUnit(
-                                expectedId,
-                                expectedUnits,
+                                startWork as WorkUnit,
+                                currentWork as WorkUnit,
                                 expectedCurrent,
-                                work as WorkUnit,
                             )
                         ) {
                             // TODO: BUG: Logging
@@ -85,18 +83,18 @@ class RequestProcessor(
                             continue@top // Break out of UoW
                         }
 
-                        respondToClientInUnitOfWork(work as RemoteQuery)
+                        respondToClientInUnitOfWork(currentWork as RemoteQuery)
 
                         // Break out of UoW
-                        if (work.isLastWorkUnit()) continue@top
+                        if (currentWork.isLastWorkUnit()) continue@top
 
                         // Break out of UoW
-                        when (val found = waitForNextWorkUnit(work.id)) {
+                        when (val found = waitForNextWorkUnit(currentWork.id)) {
                             // TODO: Log that caller is too slow in calling
                             //  again?
                             //  There is no request to respond to
                             null -> continue@top // Break out of UoW
-                            else -> work = found
+                            else -> currentWork = found
                         }
 
                         ++expectedCurrent
@@ -112,13 +110,12 @@ class RequestProcessor(
     }
 
     private fun badWorkUnit(
-        expectedId: UUID,
-        expectedUnits: Int,
-        expectedCurrent: Int,
+        startWork: WorkUnit,
         work: WorkUnit,
+        expectedCurrent: Int,
     ): Boolean {
-        if (expectedId == work.id &&
-            expectedUnits == work.expectedUnits &&
+        if (startWork.id == work.id &&
+            startWork.expectedUnits == work.expectedUnits &&
             expectedCurrent == work.currentUnit
         ) {
             return false
@@ -127,8 +124,8 @@ class RequestProcessor(
         respondWithBug(
             work,
             "Bad work unit" +
-                " [expected id: $expectedId;" +
-                " expected total work units: $expectedUnits;" +
+                " [expected id: ${startWork.id};" +
+                " expected total work units: ${startWork.expectedUnits};" +
                 " expected current work: $expectedCurrent]: " +
                 " request: $work"
         )
