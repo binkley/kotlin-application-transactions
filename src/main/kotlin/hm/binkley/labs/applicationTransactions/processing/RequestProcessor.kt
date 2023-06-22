@@ -69,17 +69,17 @@ class RequestProcessor(
                     val expectedUnits = work.expectedUnits
                     var expectedCurrent = 1
 
-                    do {
+                    while (true) {
                         if (work is AbandonUnitOfWork) {
                             runRollback(work)
                             continue@top // Break out of UoW
                         }
 
-                        if (badUnitOfWorkRequest(
+                        if (badWorkUnit(
                                 expectedId,
                                 expectedUnits,
                                 expectedCurrent,
-                                work,
+                                work as WorkUnit,
                             )
                         ) {
                             // TODO: BUG: Logging
@@ -102,7 +102,7 @@ class RequestProcessor(
                         }
 
                         ++expectedCurrent
-                    } while (expectedCurrent <= work.expectedUnits)
+                    }
                 }
             }
         }
@@ -113,11 +113,11 @@ class RequestProcessor(
         request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
     }
 
-    private fun badUnitOfWorkRequest(
+    private fun badWorkUnit(
         expectedId: UUID,
         expectedUnits: Int,
         expectedCurrent: Int,
-        work: UnitOfWorkScope,
+        work: WorkUnit,
     ): Boolean {
         if (expectedId == work.id &&
             expectedUnits == work.expectedUnits &&
@@ -126,22 +126,14 @@ class RequestProcessor(
             return false
         }
 
-        when (work) {
-            // TODO: Logging
-            is AbandonUnitOfWork -> work.result.complete(false)
-
-            is WorkUnit -> {
-                respondWithBug(
-                    work,
-                    "Unit of work out of sequence or inconsistent:" +
-                        " expected total calls: $expectedUnits;" +
-                        " actual: ${work.expectedUnits};" +
-                        " expected current call: $expectedCurrent;" +
-                        " actual: ${work.currentUnit}" +
-                        " (id: ${work.id})"
-                )
-            }
-        }
+        respondWithBug(
+            work,
+            "Unit of work out of sequence or inconsistent:" +
+                    " request: $work;" +
+                    " expected id: $expectedId;" +
+                    " expected total work units: $expectedUnits;" +
+                    " expected current work: $expectedCurrent"
+        )
 
         return true // Break out of UoW
     }
