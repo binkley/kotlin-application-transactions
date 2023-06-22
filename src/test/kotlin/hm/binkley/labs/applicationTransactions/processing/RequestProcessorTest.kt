@@ -68,6 +68,18 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    fun `should process cancel before work begins`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(1)
+        val request = unitOfWork.cancel()
+        requestQueue.offer(request)
+
+        request.result.get() shouldBe false
+        remoteResource.calls.shouldBeEmpty()
+    }
+
+    @Test
     fun `should process work unit reads`() {
         val remoteResource = runSuccessRequestProcessor()
 

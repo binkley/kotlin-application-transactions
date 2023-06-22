@@ -34,10 +34,10 @@
     <properties>
         <!-- @formatter:off -->
         <!-- TODO: Multiple issues with JaCoCo not really understanding
-              Kotlin for coverage -->
-        <coverage.branches>80</coverage.branches>
-        <coverage.instructions>97</coverage.instructions>
-        <coverage.lines>97</coverage.lines>
+              Kotlin for coverage. IntelliJ says 100% coverage -->
+        <coverage.branches>82</coverage.branches>
+        <coverage.instructions>98</coverage.instructions>
+        <coverage.lines>98</coverage.lines>
         <coverage.mutation>80</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.23.0</detekt-maven-plugin.version>
