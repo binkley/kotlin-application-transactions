@@ -31,8 +31,7 @@ class RequestProcessor(
 
     override fun run() { // Never exits until process shut down
         top@ while (!interrupted()) {
-            val request = requestQueue.poll()
-            when (request) {
+            when (val request = requestQueue.poll()) {
                 null -> continue // Busy loop for new requests
 
                 is OneRead -> {
