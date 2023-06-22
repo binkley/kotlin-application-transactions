@@ -161,6 +161,37 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    fun `should isolate work units from each other`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWorkA = UnitOfWork(2)
+        val writeWorkUnitA = unitOfWorkA.writeOne("[A] WRITE NAME")
+        requestQueue.offer(writeWorkUnitA)
+
+        val unitOfWorkB = UnitOfWork(2)
+        val writeWorkUnitB = unitOfWorkB.writeOne("[B] WRITE NAME")
+        requestQueue.offer(writeWorkUnitB)
+
+        val readWorkUnitA = unitOfWorkA.readOne("[A] READ NAME")
+        requestQueue.offer(readWorkUnitA)
+
+        val readWorkUnitB = unitOfWorkB.readOne("[B] READ NAME")
+        requestQueue.offer(readWorkUnitB)
+
+        writeWorkUnitA.result.get()
+        readWorkUnitA.result.get()
+        writeWorkUnitB.result.get()
+        readWorkUnitB.result.get()
+
+        remoteResource.calls shouldBe listOf(
+            "[A] WRITE NAME",
+            "[A] READ NAME",
+            "[B] WRITE NAME",
+            "[B] READ NAME",
+        )
+    }
+
+    @Test
     @Timeout(value = 2L, unit = SECONDS)
     fun `should cancel unit of work`() {
         val remoteResource = runSuccessRequestProcessor()
