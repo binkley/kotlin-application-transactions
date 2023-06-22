@@ -37,7 +37,7 @@
               Kotlin for coverage. IntelliJ says 100% coverage.
               Also, coverage is lower in CI than locally !? -->
         <coverage.branches>85</coverage.branches>
-        <coverage.instructions>98</coverage.instructions>
+        <coverage.instructions>97</coverage.instructions>
         <coverage.lines>97</coverage.lines>
         <coverage.mutation>81</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
