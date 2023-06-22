@@ -31,7 +31,9 @@ class RequestProcessor(
 
     override fun run() { // Never exits until process shut down
         top@ while (!interrupted()) {
-            when (val request = requestQueue.poll()) {
+            val request = requestQueue.poll()
+            if (null != request) println("REQUEST: $request")
+            when (request) {
                 null -> continue // Busy loop for new requests
 
                 is OneRead -> {
@@ -63,8 +65,9 @@ class RequestProcessor(
                     // Runs in a loop looking for further work units in this
                     // transaction
                     var work = request as UnitOfWorkScope
-                    val expected = work.expectedUnits
-                    var current = 1
+                    val expectedId = work.id
+                    val expectedUnits = work.expectedUnits
+                    var expectedCurrent = 1
 
                     do {
                         if (work is AbandonUnitOfWork) {
@@ -72,11 +75,19 @@ class RequestProcessor(
                             continue@top // Break out of UoW
                         }
 
-                        if (badUnitOfWorkRequest(expected, current, request)) {
+                        if (badUnitOfWorkRequest(
+                                expectedId,
+                                expectedUnits,
+                                expectedCurrent,
+                                work,
+                            )
+                        ) {
+                            // TODO: BUG: Logging
+                            println("BAD WORK UNIT! -> $request")
                             continue@top // Break out of UoW
                         }
 
-                        respondToClientInUnitOfWork(request)
+                        respondToClientInUnitOfWork(work as RemoteQuery)
 
                         // Break out of UoW
                         if (work.isLastWorkUnit()) continue@top
@@ -90,8 +101,8 @@ class RequestProcessor(
                             else -> work = found
                         }
 
-                        ++current
-                    } while (current <= work.expectedUnits)
+                        ++expectedCurrent
+                    } while (expectedCurrent <= work.expectedUnits)
                 }
             }
         }
@@ -103,15 +114,14 @@ class RequestProcessor(
     }
 
     private fun badUnitOfWorkRequest(
-        expectedByFirstWorkUnit: Int,
-        currentInProcessor: Int,
-        request: RemoteRequest,
+        expectedId: UUID,
+        expectedUnits: Int,
+        expectedCurrent: Int,
+        work: UnitOfWorkScope,
     ): Boolean {
-        val work = request as UnitOfWorkScope
-
-        if (currentInProcessor == work.currentUnit &&
-            expectedByFirstWorkUnit >= work.currentUnit &&
-            expectedByFirstWorkUnit == work.expectedUnits
+        if (expectedId == work.id &&
+            expectedUnits == work.expectedUnits &&
+            expectedCurrent == work.currentUnit
         ) {
             return false
         }
@@ -124,9 +134,9 @@ class RequestProcessor(
                 respondWithBug(
                     work,
                     "Unit of work out of sequence or inconsistent:" +
-                        " expected total calls: $expectedByFirstWorkUnit;" +
+                        " expected total calls: $expectedUnits;" +
                         " actual: ${work.expectedUnits};" +
-                        " expected current call: $currentInProcessor;" +
+                        " expected current call: $expectedCurrent;" +
                         " actual: ${work.currentUnit}" +
                         " (id: ${work.id})"
                 )
@@ -159,7 +169,7 @@ class RequestProcessor(
     private fun runRollback(request: AbandonUnitOfWork) {
         var outcome = true
         request.undo.forEach { query ->
-            // TODO: Logging? Return to caller?
+            // TODO: Logging? Return outcomes to caller?
             if (tryCallingRemote(query) is FailureRemoteResult) {
                 outcome = false
             }

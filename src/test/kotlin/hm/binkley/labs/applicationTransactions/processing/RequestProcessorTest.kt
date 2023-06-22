@@ -68,6 +68,34 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    @Timeout(value = 2L, unit = SECONDS)
+    fun `should process when remote is busy but succeed on retry`() {
+        val remoteResource = runBusyButSucceedSecondTryRequestProcessor()
+
+        val request = OneRead("READ NAME")
+        requestQueue.offer(request)
+
+        val result = request.result.get()
+        result should beInstanceOf<SuccessRemoteResult>()
+        result.status shouldBe 200
+        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
+    }
+
+    @Test
+    @Timeout(value = 2L, unit = SECONDS)
+    fun `should process when remote is busy but fail on retry`() {
+        val remoteResource = runBusyButFailSecondTryRequestProcessor()
+
+        val request = OneRead("READ NAME")
+        requestQueue.offer(request)
+
+        val result = request.result.get()
+        result should beInstanceOf<FailureRemoteResult>()
+        result.status shouldBe 429
+        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
+    }
+
+    @Test
     fun `should process cancel before work begins`() {
         val remoteResource = runSuccessRequestProcessor()
 
@@ -108,31 +136,28 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS)
-    fun `should process when remote is busy but succeed on retry`() {
-        val remoteResource = runBusyButSucceedSecondTryRequestProcessor()
+    fun `should isolate work units from simple reads`() {
+        val remoteResource = runSuccessRequestProcessor()
 
-        val request = OneRead("READ NAME")
-        requestQueue.offer(request)
+        val unitOfWork = UnitOfWork(2)
+        val writeWorkUnit = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(writeWorkUnit)
 
-        val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
-        result.status shouldBe 200
-        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
-    }
+        val interleaved = OneRead("FAVORITE COLOR")
+        requestQueue.offer(interleaved)
 
-    @Test
-    @Timeout(value = 2L, unit = SECONDS)
-    fun `should process when remote is busy but fail on retry`() {
-        val remoteResource = runBusyButFailSecondTryRequestProcessor()
+        val readWorkUnit = unitOfWork.readOne("READ NAME")
+        requestQueue.offer(readWorkUnit)
 
-        val request = OneRead("READ NAME")
-        requestQueue.offer(request)
+        writeWorkUnit.result.get()
+        readWorkUnit.result.get()
+        interleaved.result.get()
 
-        val result = request.result.get()
-        result should beInstanceOf<FailureRemoteResult>()
-        result.status shouldBe 429
-        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
+        remoteResource.calls shouldBe listOf(
+            "WRITE NAME",
+            "READ NAME",
+            "FAVORITE COLOR",
+        )
     }
 
     @Test
