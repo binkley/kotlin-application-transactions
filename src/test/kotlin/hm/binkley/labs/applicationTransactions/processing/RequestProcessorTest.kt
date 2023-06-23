@@ -49,7 +49,6 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
     }
@@ -62,37 +61,8 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
-    }
-
-    @Test
-    @Timeout(value = 2, unit = SECONDS)
-    fun `should process when remote is busy but succeed on retry`() {
-        val remoteResource = runBusyButSucceedSecondTryRequestProcessor()
-
-        val request = OneRead("READ NAME")
-        requestQueue.offer(request)
-
-        val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
-        result.status shouldBe 200
-        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
-    }
-
-    @Test
-    @Timeout(value = 2, unit = SECONDS)
-    fun `should process when remote is busy but fail on retry`() {
-        val remoteResource = runBusyButFailSecondTryRequestProcessor()
-
-        val request = OneRead("READ NAME")
-        requestQueue.offer(request)
-
-        val result = request.result.get()
-        result should beInstanceOf<FailureRemoteResult>()
-        result.status shouldBe 429
-        remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
     }
 
     @Test
@@ -116,7 +86,6 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
     }
@@ -130,7 +99,6 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = request.result.get()
-        result should beInstanceOf<SuccessRemoteResult>()
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
     }
@@ -290,60 +258,31 @@ internal class RequestProcessorTest {
         remoteResource.calls.shouldBeEmpty()
     }
 
-    private class RecordingRemoteResource(
-        private val realRemote: RemoteResource,
-    ) : RemoteResource {
-        val calls = mutableListOf<String>()
-
-        override fun call(query: String): RemoteResult {
-            calls += query
-            return realRemote.call(query)
-        }
-    }
-
-    private fun runSuccessRequestProcessor(): RecordingRemoteResource =
+    private fun runSuccessRequestProcessor(): TestRecordingRemoteResource =
         recordingRequestProcessor { query ->
             SuccessRemoteResult(200, "$query: CHARLIE")
         }
 
-    private fun runFailRequestProcessor(): RecordingRemoteResource =
+    private fun runFailRequestProcessor(): TestRecordingRemoteResource =
         recordingRequestProcessor { query ->
             FailureRemoteResult(400, "SYNTAX ERROR: $query")
         }
 
-    private fun runBusyButSucceedSecondTryRequestProcessor():
-        RecordingRemoteResource {
-        var firstTry = true
-        return recordingRequestProcessor { query ->
-            if (firstTry) {
-                firstTry = false
-                FailureRemoteResult(429, "TRY AGAIN IN 1 SECOND: $query")
-            } else {
-                SuccessRemoteResult(200, "$query: CHARLIE")
-            }
-        }
-    }
-
-    private fun runBusyButFailSecondTryRequestProcessor():
-        RecordingRemoteResource {
-        var firstTry = true
-        return recordingRequestProcessor { query ->
-            if (firstTry) {
-                firstTry = false
-                FailureRemoteResult(429, "TRY AGAIN IN 1 SECOND: $query")
-            } else {
-                FailureRemoteResult(429, "TRY AGAIN IN 1 SECOND: $query")
-            }
-        }
-    }
-
     private fun recordingRequestProcessor(
-        remoteResult: (String) -> RemoteResult,
-    ): RecordingRemoteResource {
-        val remoteResource = RecordingRemoteResource(remoteResult)
+        suppliedRemoteResult: (String) -> RemoteResult,
+    ): TestRecordingRemoteResource {
+        val remoteResource = TestRecordingRemoteResource { query ->
+            suppliedRemoteResult(query)
+        }
+
         threadPool.submit(
-            RequestProcessor(requestQueue, threadPool, remoteResource)
+            RequestProcessor(
+                requestQueue,
+                threadPool,
+                RemoteResourceManager(remoteResource)
+            )
         )
+
         return remoteResource
     }
 }

@@ -7,7 +7,6 @@ import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
-import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WorkUnit
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
@@ -28,9 +27,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
-    private val remoteResource: RemoteResource,
-    /** How long to wait for the remote resource to become idle. */
-    private val awaitRemoteInSeconds: Long = 1L,
+    private val remote: RemoteResourceManager,
     /** How long to wait to retry scanning for the next work unit. */
     private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {
@@ -119,7 +116,7 @@ class RequestProcessor(
     }
 
     private fun respondToClient(request: RemoteQuery) =
-        request.result.complete(tryCallingRemote(request.query))
+        request.result.complete(remote.callWithBusyRetry(request.query))
 
     private fun respondToClientInUnitOfWork(request: RemoteQuery) {
         /**
@@ -148,18 +145,6 @@ class RequestProcessor(
 
             )
         )
-    }
-
-    private fun tryCallingRemote(
-        query: String,
-    ): RemoteResult {
-        val response = remoteResource.call(query)
-        if (429 != response.status) return response
-
-        // Retry remote after waiting
-        SECONDS.sleep(awaitRemoteInSeconds)
-
-        return remoteResource.call(query)
     }
 
     private fun waitForAllToComplete() {
@@ -192,7 +177,7 @@ class RequestProcessor(
         var outcome = true
         request.undo.forEach { query ->
             // TODO: Logging? Return outcomes to caller?
-            if (tryCallingRemote(query) is FailureRemoteResult) {
+            if (remote.callWithBusyRetry(query) is FailureRemoteResult) {
                 outcome = false
             }
         }
