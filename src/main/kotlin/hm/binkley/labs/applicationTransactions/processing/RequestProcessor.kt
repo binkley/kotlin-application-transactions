@@ -11,96 +11,110 @@ import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WorkUnit
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
-import java.lang.Thread.interrupted
 import java.util.Queue
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
- * Note the embedded timeouts.
- * These need review, and moving out into configuration.
+ * Top-level request processor running on a dedicated thread in an infinite
+ * loop (until the thread is interrupted).
+ *
+ * Assumptions and conditions:
+ * - Retry the remote resource _once_ when it is busy the first try
+ * - Transactions progress speedily:
+ *   when a client caller is slow, cancel the unit of work
  */
 class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remoteResource: RemoteResource,
-    private val retryRemoteInSeconds: Long = 1L,
-    private val retryQueueForWorkInSeconds: Long = 1L,
+    /** How long to wait for the remote resource to become idle. */
+    private val awaitRemoteInSeconds: Long = 1L,
+    /** How long to wait to retry scanning for the next work unit. */
+    private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
     override fun run() { // Never exits until process shut down
-        leaveUnitOfWork@ while (!interrupted()) {
+        while (!Thread.interrupted()) {
+            // TODO: Nicer would be "take" instead of "poll", and block until
+            //  there is a request available
             when (val request = requestQueue.poll()) {
-                null -> { /* Busy loop for new requests */ }
-
-                is OneRead -> {
-                    // Reads outside a unit of work runs in parallel
-                    workerPool.submit { respondToClient(request) }
+                null -> {
+                    /* Do-nothing busy loop waiting for new requests */
                 }
 
-                // All others need exclusive access to remote resource
-                // These are blocking, run serial, and run on this thread
+                is OneRead -> {
+                    runParallelForSimpleReads(request)
+                }
+
+                /*
+                 * All others need exclusive access to remote resource.
+                 * These are blocking, run serial, and run on this thread
+                 */
 
                 is OneWrite -> {
-                    waitForAllToComplete()
-                    respondToClient(request)
+                    runExclusiveForSimpleWrites(request)
                 }
 
                 is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit -> {
-                    // First unit of work -- starts the transaction.
-                    // Runs in a loop looking for further work units in this
-                    // transaction
-                    val startWork = request as UnitOfWorkScope
-                    var currentWork = startWork
-                    var expectedCurrent = 1
-
-                    while (true) {
-                        if (currentWork is AbandonUnitOfWork) {
-                            runRollback(currentWork)
-                            continue@leaveUnitOfWork
-                        }
-
-                        val currentWorkUnit = currentWork as WorkUnit
-                        if (badWorkUnit(
-                                startWork,
-                                currentWorkUnit,
-                                expectedCurrent,
-                            )
-                        ) {
-                            logBadWorkUnit(currentWork)
-                            respondToClientWithBug(
-                                startWork,
-                                currentWorkUnit,
-                                expectedCurrent
-                            )
-                            continue@leaveUnitOfWork
-                        }
-
-                        respondToClientInUnitOfWork(
-                            currentWorkUnit as RemoteQuery
-                        )
-
-                        if (currentWorkUnit.isLastWorkUnit()) {
-                            continue@leaveUnitOfWork
-                        }
-
-                        when (
-                            val found = awaitNextWorkUnit(currentWorkUnit.id)
-                        ) {
-                            null -> {
-                                logSlowUnitOfWork(currentWork)
-                                continue@leaveUnitOfWork
-                            }
-
-                            else -> currentWork = found
-                        }
-
-                        ++expectedCurrent
-                    }
+                    runExclusiveForUnitOfWork(request as UnitOfWorkScope)
                 }
             }
+        }
+    }
+
+    private fun runParallelForSimpleReads(request: OneRead) {
+        workerPool.submit { respondToClient(request) }
+    }
+
+    private fun runExclusiveForSimpleWrites(request: OneWrite) {
+        waitForAllToComplete()
+        respondToClient(request)
+    }
+
+    private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
+        var currentWork = startWork
+        var expectedCurrent = 1
+
+        while (true) {
+            if (currentWork is AbandonUnitOfWork) {
+                runRollback(currentWork)
+                return
+            }
+
+            val currentWorkUnit = currentWork as WorkUnit
+            if (badWorkUnit(
+                    startWork,
+                    currentWorkUnit,
+                    expectedCurrent,
+                )
+            ) {
+                logBadWorkUnit(currentWork)
+                respondToClientWithBug(
+                    startWork,
+                    currentWorkUnit,
+                    expectedCurrent
+                )
+                return
+            }
+
+            respondToClientInUnitOfWork(
+                currentWorkUnit as RemoteQuery
+            )
+
+            if (currentWorkUnit.isLastWorkUnit()) {
+                return
+            }
+
+            val found = awaitNextWorkUnit(currentWorkUnit.id)
+            if (null == found) {
+                logSlowUnitOfWork(currentWork)
+                return
+            }
+            currentWork = found
+            ++expectedCurrent
         }
     }
 
@@ -108,6 +122,12 @@ class RequestProcessor(
         request.result.complete(tryCallingRemote(request.query))
 
     private fun respondToClientInUnitOfWork(request: RemoteQuery) {
+        /**
+         * Subtle point: when a unit of work begins with read requests, those
+         * can continue in parallel with outstanding simple reads.
+         * Only when encountering writes do we need exclusive access to the
+         * remote resource.
+         */
         if (request is WriteWorkUnit) waitForAllToComplete()
         respondToClient(request)
     }
@@ -137,13 +157,16 @@ class RequestProcessor(
         if (429 != response.status) return response
 
         // Retry remote after waiting
-        SECONDS.sleep(retryRemoteInSeconds)
+        SECONDS.sleep(awaitRemoteInSeconds)
 
         return remoteResource.call(query)
     }
 
     private fun waitForAllToComplete() {
-        workerPool.awaitCompletion(retryQueueForWorkInSeconds, SECONDS)
+        workerPool.awaitCompletion(
+            retryRequestQueueForWorkUnitsInSeconds,
+            SECONDS
+        )
     }
 
     /**
@@ -181,7 +204,7 @@ class RequestProcessor(
         if (null != found) return found
 
         // Let client process some, and try again
-        SECONDS.sleep(retryQueueForWorkInSeconds)
+        SECONDS.sleep(retryRequestQueueForWorkUnitsInSeconds)
 
         return pollForNextWorkUnit(id)
     }
