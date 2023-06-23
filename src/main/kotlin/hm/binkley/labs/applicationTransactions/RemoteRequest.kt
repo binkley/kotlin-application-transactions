@@ -47,11 +47,8 @@ interface UnitOfWorkScope {
     fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
-/** A single request within a unit of work. */
-interface WorkUnit : RemoteRequest, RemoteQuery, UnitOfWorkScope {
-    override val query: String
-    override val result: CompletableFuture<RemoteResult>
-}
+/** Convenience: A single request within a unit of work. */
+interface WorkUnit : RemoteQuery, UnitOfWorkScope
 
 /**
  * A single read request inside a unit of work.
@@ -63,7 +60,7 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : WorkUnit {
+) : RemoteRequest, WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -76,19 +73,17 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : WorkUnit {
+) : RemoteRequest, WorkUnit {
     override val result = CompletableFuture<RemoteResult>()
 }
 
-/**
- * Remotely abandons a unit of work.
- * There is no response from remote.
- */
+/** Abandons a unit of work, optionally running undo instructions. */
 data class AbandonUnitOfWork(
     override val id: UUID,
     override val expectedUnits: Int,
     override val currentUnit: Int,
     val undo: List<String> = emptyList(),
 ) : RemoteRequest, UnitOfWorkScope {
+    /** Did all undo instructions succeed? */
     val result = CompletableFuture<Boolean>()
 }

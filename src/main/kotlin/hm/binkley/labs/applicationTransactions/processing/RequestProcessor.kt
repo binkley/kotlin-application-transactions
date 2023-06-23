@@ -4,6 +4,7 @@ import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
+import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.RemoteResult
@@ -24,13 +25,13 @@ class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remoteResource: RemoteResource,
-    private val retryQueueForWorkInSeconds: Long = 1L,
     private val retryRemoteInSeconds: Long = 1L,
+    private val retryQueueForWorkInSeconds: Long = 1L,
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
     override fun run() { // Never exits until process shut down
-        top@ while (!interrupted()) {
+        leaveUnitOfWork@ while (!interrupted()) {
             when (val request = requestQueue.poll()) {
                 null -> continue // Busy loop for new requests
 
@@ -44,56 +45,57 @@ class RequestProcessor(
                 // These are blocking, run serial, and run on this thread
 
                 is OneWrite -> {
-                    waitForReadersToComplete()
+                    waitForAllToComplete()
                     respondToClient(request)
                     continue
                 }
 
-                is AbandonUnitOfWork -> {
-                    // TODO: Remove this case and let it fall to unit of work
-                    //  An abandon before a transaction is begun with a read
-                    //  or write
-                    //  BUG: Log? Abandon without any reads/writes
-                    request.result.complete(false)
-                    continue
-                }
-
-                is WorkUnit -> {
+                is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit -> {
                     // First unit of work -- starts the transaction.
                     // Runs in a loop looking for further work units in this
                     // transaction
-                    val startWork = request
-                    var currentWork: UnitOfWorkScope = request
+                    val startWork = request as UnitOfWorkScope
+                    var currentWork = startWork
                     var expectedCurrent = 1
 
                     while (true) {
                         if (currentWork is AbandonUnitOfWork) {
                             runRollback(currentWork)
-                            continue@top // Break out of UoW
+                            continue@leaveUnitOfWork
                         }
 
+                        val currentWorkUnit = currentWork as WorkUnit
                         if (badWorkUnit(
                                 startWork,
-                                currentWork as WorkUnit,
+                                currentWorkUnit,
                                 expectedCurrent,
                             )
                         ) {
-                            // TODO: BUG: Logging
-                            println("BAD WORK UNIT! -> $request")
-                            continue@top // Break out of UoW
+                            logBadWorkUnit(currentWork)
+                            respondToClientWithBug(
+                                startWork,
+                                currentWorkUnit,
+                                expectedCurrent
+                            )
+                            continue@leaveUnitOfWork
                         }
 
-                        respondToClientInUnitOfWork(currentWork as RemoteQuery)
+                        respondToClientInUnitOfWork(
+                            currentWorkUnit as RemoteQuery
+                        )
 
-                        // Break out of UoW
-                        if (currentWork.isLastWorkUnit()) continue@top
+                        if (currentWorkUnit.isLastWorkUnit()) {
+                            continue@leaveUnitOfWork
+                        }
 
-                        // Break out of UoW
-                        when (val found = waitForNextWorkUnit(currentWork.id)) {
-                            // TODO: Log that caller is too slow in calling
-                            //  again?
-                            //  There is no request to respond to
-                            null -> continue@top // Break out of UoW
+                        when (
+                            val found = awaitNextWorkUnit(currentWorkUnit.id)
+                        ) {
+                            null -> {
+                                logSlowUnitOfWork(currentWork)
+                                continue@leaveUnitOfWork
+                            }
+
                             else -> currentWork = found
                         }
 
@@ -104,33 +106,30 @@ class RequestProcessor(
         }
     }
 
-    private fun respondWithBug(request: WorkUnit, errorMessage: String) {
-        // TODO: How to log in addition to responding to caller?
-        request.result.complete(FailureRemoteResult(500, "BUG: $errorMessage"))
+    private fun respondToClient(request: RemoteQuery) =
+        request.result.complete(tryCallingRemote(request.query))
+
+    private fun respondToClientInUnitOfWork(request: RemoteQuery) {
+        if (request is WriteWorkUnit) waitForAllToComplete()
+        respondToClient(request)
     }
 
-    private fun badWorkUnit(
-        startWork: WorkUnit,
-        work: WorkUnit,
+    private fun respondToClientWithBug(
+        startWork: UnitOfWorkScope,
+        currentWorkUnit: WorkUnit,
         expectedCurrent: Int,
-    ): Boolean {
-        if (startWork.id == work.id &&
-            startWork.expectedUnits == work.expectedUnits &&
-            expectedCurrent == work.currentUnit
-        ) {
-            return false
-        }
+    ) {
+        currentWorkUnit.result.complete(
+            FailureRemoteResult(
+                500,
+                "BUG: Bad work unit" +
+                    " [expected id: ${startWork.id};" +
+                    " expected total work units: ${startWork.expectedUnits};" +
+                    " expected current item: $expectedCurrent]: " +
+                    " request: $currentWorkUnit"
 
-        respondWithBug(
-            work,
-            "Bad work unit" +
-                " [expected id: ${startWork.id};" +
-                " expected total work units: ${startWork.expectedUnits};" +
-                " expected current work: $expectedCurrent]: " +
-                " request: $work"
+            )
         )
-
-        return true // Break out of UoW
     }
 
     private fun tryCallingRemote(
@@ -145,13 +144,28 @@ class RequestProcessor(
         return remoteResource.call(query)
     }
 
-    private fun respondToClient(request: RemoteQuery) =
-        request.result.complete(tryCallingRemote(request.query))
-
-    private fun respondToClientInUnitOfWork(request: RemoteQuery) {
-        if (request is WriteWorkUnit) waitForReadersToComplete()
-        respondToClient(request)
+    private fun waitForAllToComplete() {
+        workerPool.awaitCompletion(retryQueueForWorkInSeconds, SECONDS)
     }
+
+    /**
+     * Checks for a work unit not part of the current unit of work.
+     * The only current case is: current item is not in sequence.
+     *
+     * The cases of bad id or wrong expected total number of items are
+     * handled when looping through the request queue for next item.
+     *
+     * @todo Refactor and enhance tests so that this check becomes unneeded
+     */
+    private fun badWorkUnit(
+        startWork: UnitOfWorkScope,
+        currentWorkUnit: WorkUnit,
+        expectedCurrent: Int,
+    ) = !(
+        startWork.id == currentWorkUnit.id &&
+            startWork.expectedUnits == currentWorkUnit.expectedUnits &&
+            expectedCurrent == currentWorkUnit.currentUnit
+        )
 
     private fun runRollback(request: AbandonUnitOfWork) {
         var outcome = true
@@ -164,11 +178,7 @@ class RequestProcessor(
         request.result.complete(outcome)
     }
 
-    private fun waitForReadersToComplete() {
-        workerPool.awaitCompletion(retryQueueForWorkInSeconds, SECONDS)
-    }
-
-    private fun waitForNextWorkUnit(id: UUID): UnitOfWorkScope? {
+    private fun awaitNextWorkUnit(id: UUID): UnitOfWorkScope? {
         val found = pollForNextWorkUnit(id)
         if (null != found) return found
 
@@ -197,4 +207,14 @@ class RequestProcessor(
         }
         return null
     }
+}
+
+/** @todo Logging */
+private fun logBadWorkUnit(currentWork: UnitOfWorkScope) {
+    println("TODO: Logging: BAD WORK UNIT! -> $currentWork")
+}
+
+/** @todo Logging */
+private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
+    println("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
 }

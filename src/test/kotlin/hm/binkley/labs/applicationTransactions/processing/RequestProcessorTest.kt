@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
-@Timeout(value = 1L, unit = DAYS) // Tests use threads
+@Timeout(value = 1, unit = DAYS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
@@ -68,7 +68,7 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS)
+    @Timeout(value = 2, unit = SECONDS)
     fun `should process when remote is busy but succeed on retry`() {
         val remoteResource = runBusyButSucceedSecondTryRequestProcessor()
 
@@ -82,7 +82,7 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS)
+    @Timeout(value = 2, unit = SECONDS)
     fun `should process when remote is busy but fail on retry`() {
         val remoteResource = runBusyButFailSecondTryRequestProcessor()
 
@@ -103,7 +103,7 @@ internal class RequestProcessorTest {
         val request = unitOfWork.cancel()
         requestQueue.offer(request)
 
-        request.result.get() shouldBe false
+        request.result.get() shouldBe true
         remoteResource.calls.shouldBeEmpty()
     }
 
@@ -136,6 +136,27 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    @Timeout(value = 2, unit = SECONDS)
+    fun `should not block others if unit of work does not finish`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(2)
+        val request = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(request)
+
+        val interleaved = OneRead("FAVORITE COLOR")
+        requestQueue.offer(interleaved)
+
+        // TODO: Arrange that test does not need bletcherous "sleep"
+        SECONDS.sleep(1)
+
+        request.result.get()
+        interleaved.result.get()
+
+        remoteResource.calls shouldBe listOf("WRITE NAME", "FAVORITE COLOR")
+    }
+
+    @Test
     fun `should isolate work units from simple reads`() {
         val remoteResource = runSuccessRequestProcessor()
 
@@ -165,27 +186,27 @@ internal class RequestProcessorTest {
         val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWorkA = UnitOfWork(2)
-        val writeWorkUnitA = unitOfWorkA.writeOne("[A] WRITE NAME")
-        requestQueue.offer(writeWorkUnitA)
-
-        val unitOfWorkB = UnitOfWork(2)
-        val writeWorkUnitB = unitOfWorkB.writeOne("[B] WRITE NAME")
-        requestQueue.offer(writeWorkUnitB)
-
         val readWorkUnitA = unitOfWorkA.readOne("[A] READ NAME")
         requestQueue.offer(readWorkUnitA)
 
-        val readWorkUnitB = unitOfWorkB.readOne("[B] READ NAME")
+        val unitOfWorkB = UnitOfWork(2)
+        val writeWorkUnitB = unitOfWorkB.readOne("[B] WRITE NAME")
+        requestQueue.offer(writeWorkUnitB)
+
+        val writeWorkUnitA = unitOfWorkA.writeOne("[A] WRITE NAME")
+        requestQueue.offer(writeWorkUnitA)
+
+        val readWorkUnitB = unitOfWorkB.writeOne("[B] READ NAME")
         requestQueue.offer(readWorkUnitB)
 
-        writeWorkUnitA.result.get()
         readWorkUnitA.result.get()
+        writeWorkUnitA.result.get()
         writeWorkUnitB.result.get()
         readWorkUnitB.result.get()
 
         remoteResource.calls shouldBe listOf(
-            "[A] WRITE NAME",
             "[A] READ NAME",
+            "[A] WRITE NAME",
             "[B] WRITE NAME",
             "[B] READ NAME",
         )
