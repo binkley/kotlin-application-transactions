@@ -33,12 +33,11 @@ class RequestProcessor(
     override fun run() { // Never exits until process shut down
         leaveUnitOfWork@ while (!interrupted()) {
             when (val request = requestQueue.poll()) {
-                null -> continue // Busy loop for new requests
+                null -> { /* Busy loop for new requests */ }
 
                 is OneRead -> {
                     // Reads outside a unit of work runs in parallel
                     workerPool.submit { respondToClient(request) }
-                    continue
                 }
 
                 // All others need exclusive access to remote resource
@@ -47,7 +46,6 @@ class RequestProcessor(
                 is OneWrite -> {
                     waitForAllToComplete()
                     respondToClient(request)
-                    continue
                 }
 
                 is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit -> {
