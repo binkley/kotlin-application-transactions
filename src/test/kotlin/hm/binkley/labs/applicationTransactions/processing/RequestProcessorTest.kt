@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Timeout
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.TimeUnit.DAYS
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
@@ -63,6 +64,22 @@ internal class RequestProcessorTest {
         val result = request.result.get()
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
+    }
+
+    @Test
+    fun `should wait for reads to finish before writing`() {
+        val remoteResource = runPausingRequestProcessor()
+
+        val read = OneRead("SLOW LORIS")
+        requestQueue.offer(read)
+
+        val write = OneWrite("WRITE NAME")
+        requestQueue.offer(write)
+
+        read.result.get()
+        write.result.get()
+
+        remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
     }
 
     @Test
@@ -266,6 +283,18 @@ internal class RequestProcessorTest {
     private fun runFailRequestProcessor(): TestRecordingRemoteResource =
         recordingRequestProcessor { query ->
             FailureRemoteResult(400, "SYNTAX ERROR: $query")
+        }
+
+    private fun runPausingRequestProcessor(): TestRecordingRemoteResource =
+        recordingRequestProcessor { query ->
+            when (query) {
+                "SLOW LORIS" -> {
+                    MILLISECONDS.sleep(600)
+                    SuccessRemoteResult(200, "I TOOK MY TIME ABOUT IT")
+                }
+
+                else -> SuccessRemoteResult(200, "$query: CHARLIE")
+            }
         }
 
     private fun recordingRequestProcessor(
