@@ -209,6 +209,8 @@ internal class RequestProcessorTest {
         val cancel = unitOfWork.cancel()
         requestQueue.offer(cancel)
 
+        read.result.get()
+
         cancel.result.get() shouldBe true
         remoteResource.calls shouldBe listOf("FAVORITE COLOR")
     }
@@ -223,6 +225,8 @@ internal class RequestProcessorTest {
         val abort = unitOfWork.abort("UNDO RENAME")
         requestQueue.offer(abort)
 
+        read.result.get()
+
         abort.result.get() shouldBe true
         remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
     }
@@ -236,6 +240,8 @@ internal class RequestProcessorTest {
         requestQueue.offer(read)
         val abort = unitOfWork.abort("ABCD PQRSTUV")
         requestQueue.offer(abort)
+
+        read.result.get()
 
         abort.result.get() shouldBe false
         remoteResource.calls shouldBe listOf("READ NAME", "ABCD PQRSTUV")

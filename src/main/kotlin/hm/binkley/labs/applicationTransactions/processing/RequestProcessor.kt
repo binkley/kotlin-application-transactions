@@ -43,7 +43,7 @@ class RequestProcessor(
                 }
 
                 is OneRead -> {
-                    runParallelForSimpleReads(request)
+                    runParallelForReads(request)
                 }
 
                 /*
@@ -62,7 +62,7 @@ class RequestProcessor(
         }
     }
 
-    private fun runParallelForSimpleReads(request: OneRead) {
+    private fun runParallelForReads(request: RemoteQuery) {
         workerPool.submit { respondToClient(request) }
     }
 
@@ -77,6 +77,7 @@ class RequestProcessor(
 
         while (true) {
             if (currentWork is AbandonUnitOfWork) {
+                waitForAllToComplete()
                 runRollback(currentWork)
                 return
             }
@@ -97,9 +98,12 @@ class RequestProcessor(
                 return
             }
 
-            respondToClientInUnitOfWork(
-                currentWorkUnit as RemoteQuery
-            )
+            if (currentWork is ReadWorkUnit) {
+                runParallelForReads(currentWork)
+            } else {
+                waitForAllToComplete()
+                respondToClient(currentWork)
+            }
 
             if (currentWorkUnit.isLastWorkUnit()) {
                 return
@@ -117,17 +121,6 @@ class RequestProcessor(
 
     private fun respondToClient(request: RemoteQuery) =
         request.result.complete(remote.callWithBusyRetry(request.query))
-
-    private fun respondToClientInUnitOfWork(request: RemoteQuery) {
-        /**
-         * Subtle point: when a unit of work begins with read requests, those
-         * can continue in parallel with outstanding simple reads.
-         * Only when encountering writes do we need exclusive access to the
-         * remote resource.
-         */
-        if (request is WriteWorkUnit) waitForAllToComplete()
-        respondToClient(request)
-    }
 
     private fun respondToClientWithBug(
         startWork: UnitOfWorkScope,
