@@ -97,6 +97,16 @@ The minimal abstractions are:
 Here "caller" means those offering requests to a shared queue, and "processor"
 means a single consumer of the queue processing requests.
 
+The implementation is a simple state machine based on the type of request:
+
+- Simple reads run in parallel
+- Simple writes wait for reads to finish, and then run in serial
+- Units of work (transactions) also wait for reads to finish, and then all
+  remote requests in the unit of work run in serial \[\*\]
+
+\* There is a slight optimization that the first reads of a unit of work can
+run in parallel with existing reads until a write request is encountered
+
 ### Caller API
 
 At a top level use
@@ -106,7 +116,9 @@ An example session might be:
 ```kotlin
 val client = RequestClient(requestQueue) // Queue is shared with processor
 
-val data = client.readOne("A REMOTE READ")
+val data = client.readOne("A REMOTE READ") // runs in parallel
+val otherData = client.readOne("A DIFFERENT READ") // runs in parallel
+
 if ("OK" == data)
     client.writeOne("CHANGE SOME DATA") // Changes are "auto committed"
 
@@ -122,7 +134,7 @@ client.inTransaction(2 /* expected max calls */).use { txn ->
         txn.abort("SOME UNDO INSTRUCTION") // Example of manual rollback
     }
     
-    // Transaction is automatically "closed"
+    // Transaction is automatically "closed" after 2 remote calls
 }
 ```
 
@@ -132,7 +144,7 @@ Start processing requests by running the processor on an independent thread:
 
 ```kotlin
 threadPool.submit(
-    RequestProcessor(requestQueue, threadPool, remoteResource)
+    RequestProcessor(requestQueue, threadPool, remoteResourceManager)
 )
 ```
 
