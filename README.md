@@ -11,6 +11,8 @@
 [![license](https://img.shields.io/badge/license-Public%20Domain-blue.svg)](http://unlicense.org/)
 
 Experiment with application-side transactions.
+This project is not specific to Kotlin, and would translate well into C# or
+Python given suitable abstractions.
 
 This is also a good project to copy as a Kotlin starter following [modern JVM
 build practices](https://github.com/binkley/modern-java-practices).
