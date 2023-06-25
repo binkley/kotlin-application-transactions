@@ -22,13 +22,23 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
-@Timeout(value = 1, unit = DAYS) // Tests use threads
+@Timeout(value = 1, unit = SECONDS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
 
     @AfterEach
     fun cleanup() = threadPool.shutdown()
+
+    @Test
+    @Timeout(value = 2, unit = SECONDS)
+    fun `should stop when processor is interrupted`() {
+        runSuccessRequestProcessor()
+
+        threadPool.shutdownNow()
+
+        threadPool.awaitTermination(1, SECONDS) shouldBe true
+    }
 
     @Test
     fun `should fail syntax errors`() {

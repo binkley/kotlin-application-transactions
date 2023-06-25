@@ -5,9 +5,6 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface RemoteRequest
 
-/**
- * @todo Drop [WorkUnit] and use union types
- */
 interface RemoteQuery {
     val query: String
 
@@ -47,8 +44,16 @@ interface UnitOfWorkScope {
     fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
-/** Convenience: A single request within a unit of work. */
-interface WorkUnit : RemoteQuery, UnitOfWorkScope
+/** Abandons a unit of work, optionally running undo instructions. */
+data class AbandonUnitOfWork(
+    override val id: UUID,
+    override val expectedUnits: Int,
+    override val currentUnit: Int,
+    val undo: List<String> = emptyList(),
+) : RemoteRequest, UnitOfWorkScope {
+    /** Did all undo instructions succeed? */
+    val result = CompletableFuture<Boolean>()
+}
 
 /**
  * A single read request inside a unit of work.
@@ -60,7 +65,7 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, WorkUnit {
+) : RemoteRequest, RemoteQuery, UnitOfWorkScope {
     override val result = CompletableFuture<RemoteResult>()
 }
 
@@ -73,17 +78,6 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, WorkUnit {
+) : RemoteRequest, RemoteQuery, UnitOfWorkScope {
     override val result = CompletableFuture<RemoteResult>()
-}
-
-/** Abandons a unit of work, optionally running undo instructions. */
-data class AbandonUnitOfWork(
-    override val id: UUID,
-    override val expectedUnits: Int,
-    override val currentUnit: Int,
-    val undo: List<String> = emptyList(),
-) : RemoteRequest, UnitOfWorkScope {
-    /** Did all undo instructions succeed? */
-    val result = CompletableFuture<Boolean>()
 }

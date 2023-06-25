@@ -8,7 +8,6 @@ import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
-import hm.binkley.labs.applicationTransactions.WorkUnit
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
 import java.util.UUID
@@ -82,17 +81,12 @@ class RequestProcessor(
                 return
             }
 
-            if (badWorkUnit(
-                    startWork,
-                    currentWork,
-                    expectedCurrent,
-                )
-            ) {
+            if (badWorkUnit(startWork, currentWork, expectedCurrent)) {
                 logBadWorkUnit(currentWork)
                 respondToClientWithBug(
                     startWork,
-                    currentWork as WorkUnit,
-                    expectedCurrent
+                    currentWork as RemoteQuery,
+                    expectedCurrent,
                 )
                 return
             }
@@ -123,7 +117,7 @@ class RequestProcessor(
 
     private fun respondToClientWithBug(
         startWork: UnitOfWorkScope,
-        currentWorkUnit: WorkUnit,
+        currentWorkUnit: RemoteQuery,
         expectedCurrent: Int,
     ) {
         currentWorkUnit.result.complete(
