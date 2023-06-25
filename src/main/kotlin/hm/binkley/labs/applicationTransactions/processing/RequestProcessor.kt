@@ -82,17 +82,16 @@ class RequestProcessor(
                 return
             }
 
-            val currentWorkUnit = currentWork as WorkUnit
             if (badWorkUnit(
                     startWork,
-                    currentWorkUnit,
+                    currentWork,
                     expectedCurrent,
                 )
             ) {
                 logBadWorkUnit(currentWork)
                 respondToClientWithBug(
                     startWork,
-                    currentWorkUnit,
+                    currentWork as WorkUnit,
                     expectedCurrent
                 )
                 return
@@ -102,14 +101,14 @@ class RequestProcessor(
                 runParallelForReads(currentWork)
             } else {
                 waitForAllToComplete()
-                respondToClient(currentWork)
+                respondToClient(currentWork as RemoteQuery)
             }
 
-            if (currentWorkUnit.isLastWorkUnit()) {
+            if (currentWork.isLastWorkUnit()) {
                 return
             }
 
-            val found = awaitNextWorkUnit(currentWorkUnit.id)
+            val found = awaitNextWorkUnit(currentWork.id)
             if (null == found) {
                 logSlowUnitOfWork(currentWork)
                 return
@@ -158,7 +157,7 @@ class RequestProcessor(
      */
     private fun badWorkUnit(
         startWork: UnitOfWorkScope,
-        currentWorkUnit: WorkUnit,
+        currentWorkUnit: UnitOfWorkScope,
         expectedCurrent: Int,
     ) = !(
         startWork.id == currentWorkUnit.id &&
