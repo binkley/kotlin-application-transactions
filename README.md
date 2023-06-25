@@ -102,10 +102,10 @@ The implementation is a simple state machine based on the type of request:
 - Simple reads run in parallel
 - Simple writes wait for reads to finish, and then run in serial
 - Units of work (transactions) also wait for reads to finish, and then all
-  remote requests in the unit of work run in serial \[\*\].
+  remote requests in the unit of work run in serial [^1].
   Units of work are exclusive and never overlap
 
-\* There is a slight optimization that the first reads of a unit of work can
+[^1]: There is a slight optimization that the first reads of a unit of work can
 run in parallel with existing simple reads until a write request is encountered
 
 ### Caller API
