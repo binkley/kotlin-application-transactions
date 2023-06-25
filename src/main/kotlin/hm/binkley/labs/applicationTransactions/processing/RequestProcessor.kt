@@ -72,30 +72,29 @@ class RequestProcessor(
 
     private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
         var currentWork = startWork
+
+        /** Tracks the current work unit in case of bugs in the caller. */
         var expectedCurrent = 1
 
         while (true) {
-            if (currentWork is AbandonUnitOfWork) {
-                waitForAllToComplete()
-                runRollback(currentWork)
+            if (isBugInWorkUnit(startWork, currentWork, expectedCurrent)) {
                 return
             }
 
-            if (badWorkUnit(startWork, currentWork, expectedCurrent)) {
-                logBadWorkUnit(currentWork)
-                respondToClientWithBug(
-                    startWork,
-                    currentWork as RemoteQuery,
-                    expectedCurrent,
-                )
-                return
-            }
+            when (currentWork) {
+                is AbandonUnitOfWork -> {
+                    runRollback(currentWork)
+                    return
+                }
 
-            if (currentWork is ReadWorkUnit) {
-                runParallelForReads(currentWork)
-            } else {
-                waitForAllToComplete()
-                respondToClient(currentWork as RemoteQuery)
+                is ReadWorkUnit -> {
+                    runParallelForReads(currentWork)
+                }
+
+                is WriteWorkUnit -> {
+                    waitForAllToComplete()
+                    respondToClient(currentWork as RemoteQuery)
+                }
             }
 
             if (currentWork.isLastWorkUnit()) {
@@ -145,21 +144,58 @@ class RequestProcessor(
      * The only current case is: current item is not in sequence.
      *
      * The cases of bad id or wrong expected total number of items are
-     * handled when looping through the request queue for next item.
+     * handled when looping through the request queue for the next item.
      *
-     * @todo Refactor and enhance tests so that this check becomes unneeded
+     * Note the difference between abandon and read/write: abandon "jumps to
+     * the end" whereas read/write plods on one at a time.
      */
-    private fun badWorkUnit(
+    private fun isBugInWorkUnit(
         startWork: UnitOfWorkScope,
-        currentWorkUnit: UnitOfWorkScope,
+        currentWork: UnitOfWorkScope,
         expectedCurrent: Int,
-    ) = !(
-        startWork.id == currentWorkUnit.id &&
-            startWork.expectedUnits == currentWorkUnit.expectedUnits &&
-            expectedCurrent == currentWorkUnit.currentUnit
-        )
+    ): Boolean {
+        var isGood = false
+        when (currentWork) {
+            is AbandonUnitOfWork -> {
+                isGood =
+                    // Check txn ids are not mixed between units of work
+                    startWork.id == currentWork.id &&
+                    // Check caller is on the same page
+                    startWork.expectedUnits == currentWork.expectedUnits &&
+                    // ABANDON (cancel/abort) should jump to the end
+                    startWork.expectedUnits == currentWork.currentUnit &&
+                    // Check that caller does not start with abandon
+                    1 < currentWork.currentUnit
+                if (!isGood) {
+                    logBadWorkUnit(currentWork)
+                    currentWork.result.complete(false)
+                }
+            }
+
+            is ReadWorkUnit, is WriteWorkUnit -> {
+                isGood =
+                    // Check txn ids are not mixed between units of work
+                    startWork.id == currentWork.id &&
+                    // Check caller is on the same page
+                    startWork.expectedUnits == currentWork.expectedUnits &&
+                    // READ/WRITE should proceed 1 at a time
+                    expectedCurrent == currentWork.currentUnit
+                if (!isGood) {
+                    logBadWorkUnit(currentWork)
+                    respondToClientWithBug(
+                        startWork,
+                        currentWork as RemoteQuery,
+                        expectedCurrent,
+                    )
+                }
+            }
+        }
+
+        return !isGood
+    }
 
     private fun runRollback(request: AbandonUnitOfWork) {
+        waitForAllToComplete()
         var outcome = true
         request.undo.forEach { query ->
             // TODO: Logging? Return outcomes to caller?

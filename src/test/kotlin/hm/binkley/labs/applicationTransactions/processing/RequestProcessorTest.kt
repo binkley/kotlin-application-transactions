@@ -1,5 +1,6 @@
 package hm.binkley.labs.applicationTransactions.processing
 
+import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
@@ -7,6 +8,7 @@ import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
+import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import hm.binkley.labs.applicationTransactions.client.UnitOfWork
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.should
@@ -15,9 +17,9 @@ import io.kotest.matchers.types.beInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
-import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -32,7 +34,7 @@ internal class RequestProcessorTest {
 
     @Test
     @Timeout(value = 2, unit = SECONDS)
-    fun `should stop when processor is interrupted`() {
+    fun `should stop when the processor it is interrupted`() {
         runSuccessRequestProcessor()
 
         threadPool.shutdownNow()
@@ -93,18 +95,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    fun `should process cancel before work begins`() {
-        val remoteResource = runSuccessRequestProcessor()
-
-        val unitOfWork = UnitOfWork(1)
-        val request = unitOfWork.cancel()
-        requestQueue.offer(request)
-
-        request.result.get() shouldBe true
-        remoteResource.calls.shouldBeEmpty()
-    }
-
-    @Test
     fun `should process work unit reads`() {
         val remoteResource = runSuccessRequestProcessor()
 
@@ -115,6 +105,7 @@ internal class RequestProcessorTest {
         val result = request.result.get()
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
+        unitOfWork.completed shouldBe true
     }
 
     @Test
@@ -128,6 +119,7 @@ internal class RequestProcessorTest {
         val result = request.result.get()
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
+        unitOfWork.completed shouldBe true
     }
 
     @Test
@@ -136,19 +128,21 @@ internal class RequestProcessorTest {
         val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
-        val request = unitOfWork.writeOne("WRITE NAME")
-        requestQueue.offer(request)
+        val workUnit = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(workUnit)
 
-        val interleaved = OneRead("FAVORITE COLOR")
-        requestQueue.offer(interleaved)
+        val pending = OneRead("FAVORITE COLOR")
+        requestQueue.offer(pending)
 
-        // TODO: Arrange that test does not need bletcherous "sleep"
+        // The unit of work does not get a request within a reasonable time, so
+        // the simple read can progress
         SECONDS.sleep(1)
 
-        request.result.get()
-        interleaved.result.get()
+        workUnit.result.get()
+        pending.result.get()
 
         remoteResource.calls shouldBe listOf("WRITE NAME", "FAVORITE COLOR")
+        unitOfWork.completed shouldBe false
     }
 
     @Test
@@ -174,6 +168,7 @@ internal class RequestProcessorTest {
             "READ NAME",
             "FAVORITE COLOR",
         )
+        unitOfWork.completed shouldBe true
     }
 
     @Test
@@ -199,12 +194,17 @@ internal class RequestProcessorTest {
         writeWorkUnitB.result.get()
         readWorkUnitB.result.get()
 
+        unitOfWorkA.completed shouldBe true
+        unitOfWorkB.completed shouldBe true
+
         remoteResource.calls shouldBe listOf(
             "[A] READ NAME",
             "[A] WRITE NAME",
             "[B] WRITE NAME",
             "[B] READ NAME",
         )
+        unitOfWorkA.completed shouldBe true
+        unitOfWorkB.completed shouldBe true
     }
 
     @Test
@@ -223,6 +223,7 @@ internal class RequestProcessorTest {
 
         cancel.result.get() shouldBe true
         remoteResource.calls shouldBe listOf("FAVORITE COLOR")
+        unitOfWork.completed shouldBe true
     }
 
     @Test
@@ -239,6 +240,7 @@ internal class RequestProcessorTest {
 
         abort.result.get() shouldBe true
         remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
+        unitOfWork.completed shouldBe true
     }
 
     @Test
@@ -255,13 +257,14 @@ internal class RequestProcessorTest {
 
         abort.result.get() shouldBe false
         remoteResource.calls shouldBe listOf("READ NAME", "ABCD PQRSTUV")
+        unitOfWork.completed shouldBe true
     }
 
     @Test
-    fun `should fail sending a crazy work item`() {
+    fun `should fail with a crazy work item`() {
         val remoteResource = runSuccessRequestProcessor()
 
-        val unitOfWork = UnitOfWork(2)
+        val unitOfWork = UnitOfWork(1)
         val martian = ReadWorkUnit(
             unitOfWork.id,
             unitOfWork.expectedUnits,
@@ -275,7 +278,91 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    fun `should fail sending out of order work units`() {
+    fun `should fail with a bad abandon request`() {
+        runSuccessRequestProcessor()
+
+        val badAbandon = AbandonUnitOfWork(
+            UUID.randomUUID(), // immaterial
+            2,
+            1,
+        )
+        requestQueue.offer(badAbandon)
+
+        badAbandon.result.get() shouldBe false
+    }
+
+    @Test
+    fun `should fail abandon when no previous read or write`() {
+        runSuccessRequestProcessor()
+
+        val badAbandon = AbandonUnitOfWork(
+            UUID.randomUUID(), // immaterial
+            1,
+            1,
+        )
+        requestQueue.offer(badAbandon)
+
+        badAbandon.result.get() shouldBe false
+    }
+
+    @Test
+    fun `should fail abandon when out of step with previous work units`() {
+        runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(3)
+        requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
+
+        val badAbandon = AbandonUnitOfWork(
+            unitOfWork.id,
+            2, // What the test really checks
+            unitOfWork.expectedUnits,
+        )
+        requestQueue.offer(badAbandon)
+
+        badAbandon.result.get() shouldBe false
+        unitOfWork.completed shouldBe false
+    }
+
+    @Test
+    fun `should fail read when out of step with previous work units`() {
+        runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(3)
+        requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
+
+        val badQuery = ReadWorkUnit(
+            unitOfWork.id,
+            2, // What the test really checks
+            unitOfWork.expectedUnits,
+            "READ NAME",
+        )
+        requestQueue.offer(badQuery)
+
+        badQuery.result.get() should beInstanceOf<FailureRemoteResult>()
+        unitOfWork.completed shouldBe false
+    }
+
+    @Test
+    fun `should fail write when out of step with previous work units`() {
+        runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(3)
+        requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
+
+        val badQuery = WriteWorkUnit(
+            unitOfWork.id,
+            2, // What the test really checks
+            unitOfWork.expectedUnits,
+            "CHANGE NAME",
+        )
+        requestQueue.offer(badQuery)
+
+        badQuery.result.get() should beInstanceOf<FailureRemoteResult>()
+        unitOfWork.completed shouldBe false
+    }
+
+    @Test
+    fun `should fail with out of order work units`() {
         val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
@@ -289,6 +376,7 @@ internal class RequestProcessorTest {
 
         martian.result.get() should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls.shouldBeEmpty()
+        unitOfWork.completed shouldBe false
     }
 
     private fun runSuccessRequestProcessor(): TestRecordingRemoteResource =

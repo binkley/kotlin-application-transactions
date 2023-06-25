@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface RemoteRequest
 
-interface RemoteQuery {
+sealed interface RemoteQuery {
     val query: String
 
     /** Caller blocks obtaining the result until it is available. */
@@ -16,19 +16,21 @@ interface RemoteQuery {
  * A single read request outside a unit of work.
  * Remotely, it runs concurrently with other reads.
  */
-data class OneRead(override val query: String) : RemoteRequest, RemoteQuery {
-    override val result = CompletableFuture<RemoteResult>()
-}
+data class OneRead(
+    override val query: String,
+    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
+) : RemoteRequest, RemoteQuery
 
 /**
  * A single write request outside a unit of work.
  * Remotely, it runs serially, and blocks other requests.
  */
-data class OneWrite(override val query: String) : RemoteRequest, RemoteQuery {
-    override val result = CompletableFuture<RemoteResult>()
-}
+data class OneWrite(
+    override val query: String,
+    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
+) : RemoteRequest, RemoteQuery
 
-interface UnitOfWorkScope {
+sealed interface UnitOfWorkScope {
     val id: UUID
 
     /**
@@ -41,6 +43,7 @@ interface UnitOfWorkScope {
     /** 1-based */
     val currentUnit: Int
 
+    /** See `UnitOfWork.complete`. */
     fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
@@ -65,9 +68,8 @@ data class ReadWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, RemoteQuery, UnitOfWorkScope {
-    override val result = CompletableFuture<RemoteResult>()
-}
+    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
+) : RemoteRequest, RemoteQuery, UnitOfWorkScope
 
 /**
  * A single write request inside a unit of work.
@@ -78,6 +80,5 @@ data class WriteWorkUnit(
     override val expectedUnits: Int,
     override val currentUnit: Int,
     override val query: String,
-) : RemoteRequest, RemoteQuery, UnitOfWorkScope {
-    override val result = CompletableFuture<RemoteResult>()
-}
+    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
+) : RemoteRequest, RemoteQuery, UnitOfWorkScope
