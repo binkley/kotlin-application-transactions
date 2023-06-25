@@ -9,7 +9,7 @@ import java.util.UUID
 import java.util.UUID.randomUUID
 
 class UnitOfWork(val expectedUnits: Int) :
-    Transactional<RemoteQuery, AbandonUnitOfWork> {
+    Transactionish<RemoteQuery, AbandonUnitOfWork> {
     val id: UUID = randomUUID()
 
     /** 1-based: pre-increment before use */

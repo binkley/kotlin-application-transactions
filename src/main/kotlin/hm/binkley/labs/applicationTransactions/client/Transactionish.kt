@@ -1,6 +1,9 @@
 package hm.binkley.labs.applicationTransactions.client
 
-interface Transactional<QueryResult, OperationResult> : AutoCloseable {
+/**
+ * Represents an application process representation of DB transactions.
+ */
+interface Transactionish<QueryResult, OperationResult> : AutoCloseable {
     /** Runs a single remote read query. */
     fun readOne(query: String): QueryResult
 

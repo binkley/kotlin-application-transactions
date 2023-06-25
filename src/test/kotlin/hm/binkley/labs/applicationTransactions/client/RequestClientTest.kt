@@ -68,7 +68,7 @@ internal class RequestClientTest {
     fun `should succeed at one read in a transaction`() {
         runFakeRequestProcessorForQuery(true, "GREEN")
 
-        val response = client.inTransaction(1).use { txn ->
+        val response = client.inExclusiveAccess(1).use { txn ->
             txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
         }
 
@@ -79,7 +79,7 @@ internal class RequestClientTest {
     fun `should fail at one read in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
-        client.inTransaction(1).use { txn ->
+        client.inExclusiveAccess(1).use { txn ->
             shouldThrow<IllegalStateException> {
                 txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
             }
@@ -90,7 +90,7 @@ internal class RequestClientTest {
     fun `should succeed at one write in a transaction`() {
         runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
-        val response = client.inTransaction(1).use { txn ->
+        val response = client.inExclusiveAccess(1).use { txn ->
             txn.writeOne("CHANGE COLORS")
         }
 
@@ -101,7 +101,7 @@ internal class RequestClientTest {
     fun `should fail at one write in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
-        client.inTransaction(1).use { txn ->
+        client.inExclusiveAccess(1).use { txn ->
             shouldThrow<IllegalStateException> {
                 txn.writeOne("CHANGE COLORS")
             }
@@ -112,7 +112,7 @@ internal class RequestClientTest {
     fun `should cancel in a transaction`() {
         val correctRequest = runFakeRequestProcessorForOperation(false)
 
-        client.inTransaction(1).use { txn ->
+        client.inExclusiveAccess(1).use { txn ->
             txn.cancel()
         }
 
@@ -123,7 +123,7 @@ internal class RequestClientTest {
     fun `should abort in a transaction`() {
         val correctRequest = runFakeRequestProcessorForOperation(true)
 
-        client.inTransaction(1).use { txn ->
+        client.inExclusiveAccess(1).use { txn ->
             txn.abort("RESET COLORS")
         }
 
