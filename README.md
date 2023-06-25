@@ -85,12 +85,12 @@ abstractions that need translation into an actual distributed scenario:
 - This project _does not_ address distributed transactions; it assumes a
   _single_ remote data source service
 
-The minimal abstractions are:
+### Minimally assumed abstractions
 
-1. A searchable, concurrent-safe queue for submitting requests for remote 
-   processing
-2. A way to submit concurrent work to a remote resource that can discover 
-   when there is no current work in progress
+- A searchable, concurrent-safe queue for submitting requests for remote
+  processing 
+- A means for exclusive access to the remote resource
+- Callers and tests can wait on completion of submitted work
 
 ## Design
 
