@@ -51,7 +51,7 @@ class RequestProcessor(
                  */
 
                 is OneWrite -> {
-                    runExclusiveForSimpleWrites(request)
+                    runSerialForWrites(request)
                 }
 
                 is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit -> {
@@ -65,7 +65,7 @@ class RequestProcessor(
         workerPool.submit { respondToClient(request) }
     }
 
-    private fun runExclusiveForSimpleWrites(request: OneWrite) {
+    private fun runSerialForWrites(request: RemoteQuery) {
         waitForAllToComplete()
         respondToClient(request)
     }
@@ -83,7 +83,7 @@ class RequestProcessor(
 
             when (currentWork) {
                 is AbandonUnitOfWork -> {
-                    runRollback(currentWork)
+                    runSerialForRollback(currentWork)
                     return
                 }
 
@@ -92,8 +92,7 @@ class RequestProcessor(
                 }
 
                 is WriteWorkUnit -> {
-                    waitForAllToComplete()
-                    respondToClient(currentWork as RemoteQuery)
+                    runSerialForWrites(currentWork as RemoteQuery)
                 }
             }
 
@@ -132,6 +131,14 @@ class RequestProcessor(
         )
     }
 
+    /**
+     * Only reads are submitted to the worker pool.
+     * Writes do not need waiting on: the code is structured so that writes
+     * always run in serial, never overlapping, and do not involve the worker
+     * pool (all writes run on the current thread).
+     * However, reads run in parallel, so writes should wait for them to
+     * complete (all reads run from the worker pool).
+     */
     private fun waitForAllToComplete() {
         workerPool.awaitCompletion(
             retryRequestQueueForWorkUnitsInSeconds,
@@ -194,7 +201,7 @@ class RequestProcessor(
         return !isGood
     }
 
-    private fun runRollback(request: AbandonUnitOfWork) {
+    private fun runSerialForRollback(request: AbandonUnitOfWork) {
         waitForAllToComplete()
         var outcome = true
         request.undo.forEach { query ->
