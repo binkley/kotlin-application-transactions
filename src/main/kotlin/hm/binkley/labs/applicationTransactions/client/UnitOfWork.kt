@@ -56,7 +56,7 @@ class UnitOfWork(val expectedUnits: Int) :
 
     override fun cancel(): AbandonUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id, expectedUnits, currentUnit)
+        return AbandonUnitOfWork(id, expectedUnits)
     }
 
     override fun abort(undo: List<String>): AbandonUnitOfWork {
@@ -66,7 +66,7 @@ class UnitOfWork(val expectedUnits: Int) :
         }
 
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id, expectedUnits, currentUnit, undo)
+        return AbandonUnitOfWork(id, expectedUnits, undo)
     }
 
     override fun close() {
@@ -74,7 +74,7 @@ class UnitOfWork(val expectedUnits: Int) :
         error(
             "BUG: Fewer work units than expected:" +
                 " expected $expectedUnits; actual: $currentUnit." +
-                " Did you use cancel or abort when needed?" +
+                " Did you use cancel or abort as needed?" +
                 " (id: $id)"
         )
     }

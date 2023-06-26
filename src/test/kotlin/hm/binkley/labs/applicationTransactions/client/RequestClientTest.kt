@@ -10,7 +10,6 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import java.lang.Thread.interrupted
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newSingleThreadExecutor
@@ -134,20 +133,24 @@ internal class RequestClientTest {
         succeedOrFail: Boolean,
         responseForSuccess: String = "",
     ) = threadPool.submit {
-        while (!interrupted()) {
+        while (!Thread.interrupted()) {
+            // Native Kotlin: request = requestQueue.poll() ?: continue
+            // More explicit here to help translation into other languages
             val request = requestQueue.poll()
             if (null == request) continue
             val remoteQuery = request as RemoteQuery
-            if (succeedOrFail) {
-                remoteQuery.result.complete(
-                    SuccessRemoteResult(200, responseForSuccess)
+            val result = if (succeedOrFail) {
+                SuccessRemoteResult(
+                    200,
+                    responseForSuccess,
                 )
             } else {
-                remoteQuery.result.complete(
-                    FailureRemoteResult(429, "SLOW DOWN, PARDNER")
+                FailureRemoteResult(
+                    400,
+                    "SYNTAX ERROR: ${remoteQuery.query}",
                 )
             }
-            break
+            remoteQuery.result.complete(result)
         }
     }
 
@@ -156,7 +159,9 @@ internal class RequestClientTest {
     ): Future<Boolean> {
         val correctRequest = CompletableFuture<Boolean>()
         threadPool.submit {
-            while (!interrupted()) {
+            while (!Thread.interrupted()) {
+                // Native Kotlin: request = requestQueue.poll() ?: continue
+                // More explicit here to help translation into other languages
                 val request = requestQueue.poll()
                 if (null == request) continue
                 if (request is AbandonUnitOfWork) {

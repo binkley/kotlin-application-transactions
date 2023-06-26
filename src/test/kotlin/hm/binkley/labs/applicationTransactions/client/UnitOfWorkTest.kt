@@ -88,7 +88,7 @@ class UnitOfWorkTest {
     }
 
     @Test
-    fun `should throw a bug if not enough work units to close`() {
+    fun `should throw a bug when closing prematurely`() {
         shouldThrow<IllegalStateException> {
             unitOfWork.close()
         }

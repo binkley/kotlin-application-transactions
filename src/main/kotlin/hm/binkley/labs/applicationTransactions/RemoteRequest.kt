@@ -51,9 +51,10 @@ sealed interface UnitOfWorkScope {
 data class AbandonUnitOfWork(
     override val id: UUID,
     override val expectedUnits: Int,
-    override val currentUnit: Int,
     val undo: List<String> = emptyList(),
 ) : RemoteRequest, UnitOfWorkScope {
+    override val currentUnit = expectedUnits
+
     /** Did all undo instructions succeed? */
     val result = CompletableFuture<Boolean>()
 }
