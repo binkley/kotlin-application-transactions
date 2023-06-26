@@ -168,11 +168,7 @@ class RequestProcessor(
                     // Check txn ids are not mixed between units of work
                     startWork.id == currentWork.id &&
                     // Check caller is on the same page
-                    startWork.expectedUnits == currentWork.expectedUnits &&
-                    // ABANDON (cancel/abort) should jump to the end
-                    startWork.expectedUnits == currentWork.currentUnit &&
-                    // Check that caller does not start with abandon
-                    1 < currentWork.currentUnit
+                    startWork.expectedUnits == currentWork.expectedUnits
                 if (!isGood) {
                     logBadWorkUnit(currentWork)
                     currentWork.result.complete(false)

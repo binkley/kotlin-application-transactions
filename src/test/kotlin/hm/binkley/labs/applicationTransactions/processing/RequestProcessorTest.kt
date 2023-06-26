@@ -278,19 +278,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    fun `should fail abandon when no previous read or write`() {
-        runSuccessRequestProcessor()
-
-        val badAbandon = AbandonUnitOfWork(
-            UUID.randomUUID(), // immaterial
-            1,
-        )
-        requestQueue.offer(badAbandon)
-
-        badAbandon.result.get() shouldBe false
-    }
-
-    @Test
     fun `should fail abandon when out of step with previous work units`() {
         runSuccessRequestProcessor()
 
