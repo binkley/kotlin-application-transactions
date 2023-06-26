@@ -165,8 +165,6 @@ class RequestProcessor(
         when (currentWork) {
             is AbandonUnitOfWork -> {
                 isGood =
-                    // Check txn ids are not mixed between units of work
-                    startWork.id == currentWork.id &&
                     // Check caller is on the same page
                     startWork.expectedUnits == currentWork.expectedUnits
                 if (!isGood) {
@@ -177,8 +175,6 @@ class RequestProcessor(
 
             is ReadWorkUnit, is WriteWorkUnit -> {
                 isGood =
-                    // Check txn ids are not mixed between units of work
-                    startWork.id == currentWork.id &&
                     // Check caller is on the same page
                     startWork.expectedUnits == currentWork.expectedUnits &&
                     // READ/WRITE should proceed 1 at a time

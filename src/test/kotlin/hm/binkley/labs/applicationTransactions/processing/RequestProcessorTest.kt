@@ -17,7 +17,6 @@ import io.kotest.matchers.types.beInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.TimeUnit.MILLISECONDS
