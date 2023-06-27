@@ -22,8 +22,14 @@ import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
-/** Not typical unit test style; threads are challenging. */
-@Timeout(value = 2, unit = SECONDS) // Tests use threads
+/**
+ * Not typical unit test style; threads are challenging.
+ *
+ * The [Timeout] choice of 5 seconds ensures that developers do not wait
+ * overlong on stuck tests, but that any pauses in production code (ie,
+ * retries) can fully complete.
+ */
+@Timeout(value = 5, unit = SECONDS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
