@@ -25,8 +25,9 @@ Try `./run` for a demonstration.
 To build as CI would, use `./batect build`.
 Try `./batect run` for a demonstration as CI would.
 
-This project assumes JDK 17.
-There are no run-time dependencies beyond the Kotlin standard library.
+> **Note**
+> This project assumes JDK 17.
+> There are no run-time dependencies beyond the Kotlin standard library.
 
 ## Overview
 
