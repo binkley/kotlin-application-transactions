@@ -78,6 +78,7 @@ internal class RequestProcessorTest {
     }
 
     @Test
+    @Timeout(value = 2, unit = SECONDS)
     fun `should wait for reads to finish before writing`() {
         val remoteResource = runSlowRequestProcessor()
 
@@ -105,6 +106,20 @@ internal class RequestProcessorTest {
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
         unitOfWork.completed shouldBe true
+    }
+
+    @Test
+    @Timeout(value = 2, unit = SECONDS)
+    fun `should stop unit of work when interrupted`() {
+        runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(2)
+        val request = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(request)
+
+        threadPool.shutdownNow()
+
+        threadPool.awaitTermination(1, SECONDS) shouldBe true
     }
 
     @Test
