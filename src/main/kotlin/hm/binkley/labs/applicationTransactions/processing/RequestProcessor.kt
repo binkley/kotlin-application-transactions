@@ -76,7 +76,7 @@ class RequestProcessor(
         /** Tracks the current work unit in case of bugs in the caller. */
         var expectedCurrent = 1
 
-        while (true) {
+        while (!Thread.interrupted()) {
             if (isBugInWorkUnit(startWork, currentWork, expectedCurrent)) {
                 return
             }

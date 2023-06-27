@@ -33,7 +33,7 @@ internal class RequestProcessorTest {
 
     @Test
     @Timeout(value = 2, unit = SECONDS)
-    fun `should stop when the processor it is interrupted`() {
+    fun `should stop when the processor is interrupted`() {
         runSuccessRequestProcessor()
 
         threadPool.shutdownNow()
@@ -362,13 +362,11 @@ internal class RequestProcessorTest {
 
     private fun runPausingRequestProcessor(): TestRecordingRemoteResource =
         recordingRequestProcessor { query ->
-            when (query) {
-                "SLOW LORIS" -> {
-                    MILLISECONDS.sleep(600)
-                    SuccessRemoteResult(200, "I TOOK MY TIME ABOUT IT")
-                }
-
-                else -> SuccessRemoteResult(200, "$query: CHARLIE")
+            if (query.contains("SLOW LORIS")) {
+                MILLISECONDS.sleep(600)
+                SuccessRemoteResult(200, "I TOOK MY TIME ABOUT IT: $query")
+            } else {
+                SuccessRemoteResult(200, "$query: CHARLIE")
             }
         }
 

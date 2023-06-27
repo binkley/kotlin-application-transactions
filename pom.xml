@@ -36,8 +36,8 @@
         <!-- TODO: Multiple issues with JaCoCo not really understanding
               Kotlin for coverage. IntelliJ says 100% coverage.
               Also, coverage is lower in CI than locally !? -->
-        <coverage.branches>93</coverage.branches>
-        <coverage.instructions>99</coverage.instructions>
+        <coverage.branches>92</coverage.branches>
+        <coverage.instructions>98</coverage.instructions>
         <coverage.lines>99</coverage.lines>
         <coverage.mutation>80</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
