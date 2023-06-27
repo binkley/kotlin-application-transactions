@@ -3,9 +3,9 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.RemoteResult
 
 /**
- * A test-only decorator over [RemoteResource] that:
+ * A test-only [RemoteResource] that:
  * 1. Wraps and calls the [realRemoteResource] to perform work
- * 2. Tracks for testing what queries were sent
+ * 2. Records for testing what queries were sent
  */
 internal class TestRecordingRemoteResource(
     private val realRemoteResource: RemoteResource,

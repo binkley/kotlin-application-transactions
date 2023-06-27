@@ -79,7 +79,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should wait for reads to finish before writing`() {
-        val remoteResource = runPausingRequestProcessor()
+        val remoteResource = runSlowRequestProcessor()
 
         val read = OneRead("SLOW LORIS")
         requestQueue.offer(read)
@@ -351,17 +351,17 @@ internal class RequestProcessorTest {
     }
 
     private fun runSuccessRequestProcessor(): TestRecordingRemoteResource =
-        recordingRequestProcessor { query ->
+        runRecordingRequestProcessor { query ->
             SuccessRemoteResult(200, "$query: CHARLIE")
         }
 
     private fun runFailRequestProcessor(): TestRecordingRemoteResource =
-        recordingRequestProcessor { query ->
+        runRecordingRequestProcessor { query ->
             FailureRemoteResult(400, "SYNTAX ERROR: $query")
         }
 
-    private fun runPausingRequestProcessor(): TestRecordingRemoteResource =
-        recordingRequestProcessor { query ->
+    private fun runSlowRequestProcessor(): TestRecordingRemoteResource =
+        runRecordingRequestProcessor { query ->
             if (query.contains("SLOW LORIS")) {
                 MILLISECONDS.sleep(600)
                 SuccessRemoteResult(200, "I TOOK MY TIME ABOUT IT: $query")
@@ -370,7 +370,7 @@ internal class RequestProcessorTest {
             }
         }
 
-    private fun recordingRequestProcessor(
+    private fun runRecordingRequestProcessor(
         suppliedRemoteResult: (String) -> RemoteResult,
     ): TestRecordingRemoteResource {
         val remoteResource = TestRecordingRemoteResource { query ->

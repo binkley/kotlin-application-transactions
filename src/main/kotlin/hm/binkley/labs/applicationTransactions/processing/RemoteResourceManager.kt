@@ -6,8 +6,9 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
- * A decorator over a [RemoteResource] providing _policy_ for retrying the
+ * An adapter over a [RemoteResource] providing _policy_ for retrying the
  * resource when it is busy.
+ * It does not provide access to [RemoteResource.call].
  */
 class RemoteResourceManager(
     private val remoteResource: RemoteResource,
