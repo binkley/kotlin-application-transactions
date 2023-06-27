@@ -161,12 +161,10 @@ class RequestProcessor(
         currentWork: UnitOfWorkScope,
         expectedCurrent: Int,
     ): Boolean {
-        var isGood = false
+        // Check caller is on the same page
+        var isGood = startWork.expectedUnits == currentWork.expectedUnits
         when (currentWork) {
             is AbandonUnitOfWork -> {
-                isGood =
-                    // Check caller is on the same page
-                    startWork.expectedUnits == currentWork.expectedUnits
                 if (!isGood) {
                     logBadWorkUnit(currentWork)
                     currentWork.result.complete(false)
@@ -174,11 +172,8 @@ class RequestProcessor(
             }
 
             is ReadWorkUnit, is WriteWorkUnit -> {
-                isGood =
-                    // Check caller is on the same page
-                    startWork.expectedUnits == currentWork.expectedUnits &&
-                    // READ/WRITE should proceed 1 at a time
-                    expectedCurrent == currentWork.currentUnit
+                // READ/WRITE should proceed 1 at a time
+                isGood = isGood && expectedCurrent == currentWork.currentUnit
                 if (!isGood) {
                     logBadWorkUnit(currentWork)
                     respondToClientWithBug(
