@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** Not typical unit test style; threads are challenging. */
-@Timeout(value = 1, unit = SECONDS) // Tests use threads
+@Timeout(value = 2, unit = SECONDS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
@@ -32,7 +32,6 @@ internal class RequestProcessorTest {
     fun cleanup() = threadPool.shutdown()
 
     @Test
-    @Timeout(value = 2, unit = SECONDS)
     fun `should stop when the processor is interrupted`() {
         runSuccessRequestProcessor()
 
@@ -78,7 +77,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2, unit = SECONDS)
     fun `should wait for reads to finish before writing`() {
         val remoteResource = runSlowRequestProcessor()
 
@@ -109,7 +107,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2, unit = SECONDS)
     fun `should stop unit of work when interrupted`() {
         runSuccessRequestProcessor()
 
@@ -137,7 +134,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2, unit = SECONDS)
     fun `should not block others if unit of work does not finish`() {
         val remoteResource = runSuccessRequestProcessor()
 
@@ -222,7 +218,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    @Timeout(value = 2L, unit = SECONDS)
     fun `should cancel unit of work`() {
         val remoteResource = runSuccessRequestProcessor()
 
