@@ -36,9 +36,9 @@
         <!-- TODO: Multiple issues with JaCoCo not really understanding
               Kotlin for coverage. IntelliJ says 100% coverage.
               Also, coverage is lower in CI than locally !? -->
-        <coverage.branches>90</coverage.branches>
-        <coverage.instructions>97</coverage.instructions>
-        <coverage.lines>97</coverage.lines>
+        <coverage.branches>92</coverage.branches>
+        <coverage.instructions>98</coverage.instructions>
+        <coverage.lines>99</coverage.lines>
         <coverage.mutation>80</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.23.0</detekt-maven-plugin.version>
@@ -125,6 +125,10 @@
     </dependencies>
 
     <build>
+        <!-- TODO: Pitest needs to see these; IntelliJ Kotlin support does not
+              like them, and wants them in plugin settings. -->
+        <sourceDirectory>src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

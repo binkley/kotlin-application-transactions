@@ -39,7 +39,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should stop when the processor is interrupted`() {
-        runSuccessRequestProcessor()
+        runRequestProcessor()
 
         threadPool.shutdownNow()
 
@@ -48,7 +48,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail syntax errors`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val request = OneRead("BAD: ABCD PQRSTUV")
         requestQueue.offer(request)
@@ -60,7 +60,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should process simple reads`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val request = OneRead("READ NAME")
         requestQueue.offer(request)
@@ -72,7 +72,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should process simple writes`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val request = OneWrite("WRITE NAME")
         requestQueue.offer(request)
@@ -100,7 +100,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should process work unit reads`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(1)
         val request = unitOfWork.readOne("READ NAME")
@@ -114,7 +114,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should stop unit of work when interrupted`() {
-        runSuccessRequestProcessor()
+        runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val request = unitOfWork.writeOne("WRITE NAME")
@@ -127,7 +127,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should process work unit writes`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(1)
         val request = unitOfWork.writeOne("WRITE NAME")
@@ -141,7 +141,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should leave unit of work when write fails`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val request = unitOfWork.writeOne("BAD THING")
@@ -156,7 +156,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should not block others if unit of work does not finish`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val workUnit = unitOfWork.writeOne("WRITE NAME")
@@ -178,7 +178,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should isolate work units from simple reads`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val writeWorkUnit = unitOfWork.writeOne("WRITE NAME")
@@ -204,7 +204,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should isolate work units from each other`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWorkA = UnitOfWork(2)
         val readWorkUnitA = unitOfWorkA.readOne("[A] READ NAME")
@@ -240,7 +240,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should cancel unit of work`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val read = unitOfWork.readOne("FAVORITE COLOR")
@@ -258,7 +258,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should abort unit of work with undo instructions`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
@@ -275,7 +275,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should abort unit of work with undo instructions but some fail`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
@@ -292,7 +292,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail with a crazy work item`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(1)
         val martian = ReadWorkUnit(
@@ -309,7 +309,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail abandon when out of step with previous work units`() {
-        runSuccessRequestProcessor()
+        runRequestProcessor()
 
         val expectedUnits = 3
         val unitOfWork = UnitOfWork(expectedUnits)
@@ -327,7 +327,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail read when out of step with previous work units`() {
-        runSuccessRequestProcessor()
+        runRequestProcessor()
 
         val unitOfWork = UnitOfWork(3)
         requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
@@ -346,7 +346,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail write when out of step with previous work units`() {
-        runSuccessRequestProcessor()
+        runRequestProcessor()
 
         val unitOfWork = UnitOfWork(3)
         requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
@@ -365,7 +365,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail with out of order work units`() {
-        val remoteResource = runSuccessRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
         val martian = ReadWorkUnit(
@@ -381,7 +381,7 @@ internal class RequestProcessorTest {
         unitOfWork.completed shouldBe false
     }
 
-    private fun runSuccessRequestProcessor(): TestRecordingRemoteResource =
+    private fun runRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
             if (query.contains("BAD")) {
                 FailureRemoteResult(400, "PROBLEM: $query")
@@ -398,12 +398,6 @@ internal class RequestProcessorTest {
             } else {
                 SuccessRemoteResult(200, "$query: CHARLIE")
             }
-        }
-
-    private fun runTimeoutRequestProcessor(): TestRecordingRemoteResource =
-        runRecordingRequestProcessor { query ->
-            SECONDS.sleep(2)
-            SuccessRemoteResult(200, "$query: TOOK 30 SECONDS")
         }
 
     private fun runRecordingRequestProcessor(
