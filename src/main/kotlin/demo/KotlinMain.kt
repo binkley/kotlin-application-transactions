@@ -47,7 +47,7 @@ fun main() {
     println("START A UNIT OF WORK EXPECTING UP TO 2 REQUESTS")
     println(
         "UNITS OF WORK ARE EXCLUSIVE OF SIMPLE READS AND WRITES AND OF" +
-                " OTHER UNITS OF WORK"
+            " OTHER UNITS OF WORK"
     )
     val uow = client.inExclusiveAccess(2)
     println("USE OF `use` IS KOTLIN-SPECIFIC: RELEASE RESOURCE AFTER")

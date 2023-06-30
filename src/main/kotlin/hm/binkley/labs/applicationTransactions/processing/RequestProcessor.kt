@@ -98,8 +98,9 @@ class RequestProcessor(
 
                 is WriteWorkUnit -> {
                     val result = runSerialForWrites(currentWork as RemoteQuery)
-                    if (result is FailureRemoteResult)
+                    if (result is FailureRemoteResult) {
                         return
+                    }
                 }
             }
 
@@ -132,10 +133,10 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Bad work unit" +
-                        " [expected id: ${startWork.id};" +
-                        " expected total work units: ${startWork.expectedUnits};" +
-                        " expected current item: $expectedCurrent]: " +
-                        " request: $currentWorkUnit"
+                    " [expected id: ${startWork.id};" +
+                    " expected total work units: ${startWork.expectedUnits};" +
+                    " expected current item: $expectedCurrent]: " +
+                    " request: $currentWorkUnit"
 
             )
         )
