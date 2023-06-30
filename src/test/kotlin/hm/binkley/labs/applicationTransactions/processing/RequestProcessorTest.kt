@@ -50,12 +50,12 @@ internal class RequestProcessorTest {
     fun `should fail syntax errors`() {
         val remoteResource = runFailRequestProcessor()
 
-        val request = OneRead("ABCD PQRSTUV")
+        val request = OneRead("BAD: ABCD PQRSTUV")
         requestQueue.offer(request)
 
         val result = request.result.get()
         result should beInstanceOf<FailureRemoteResult>()
-        remoteResource.calls shouldBe listOf("ABCD PQRSTUV")
+        remoteResource.calls shouldBe listOf("BAD: ABCD PQRSTUV")
     }
 
     @Test
@@ -127,6 +127,20 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should process work unit writes`() {
+        val remoteResource = runSuccessRequestProcessor()
+
+        val unitOfWork = UnitOfWork(1)
+        val request = unitOfWork.writeOne("WRITE NAME")
+        requestQueue.offer(request)
+
+        val result = request.result.get()
+        (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
+        remoteResource.calls shouldBe listOf("WRITE NAME")
+        unitOfWork.completed shouldBe true
+    }
+
+    @Test
+    fun `should leave unit of work when write fails`() {
         val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWork = UnitOfWork(1)
@@ -265,13 +279,13 @@ internal class RequestProcessorTest {
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
         requestQueue.offer(read)
-        val abort = unitOfWork.abort("ABCD PQRSTUV")
+        val abort = unitOfWork.abort("BAD: ABCD PQRSTUV")
         requestQueue.offer(abort)
 
         read.result.get()
 
         abort.result.get() shouldBe false
-        remoteResource.calls shouldBe listOf("READ NAME", "ABCD PQRSTUV")
+        remoteResource.calls shouldBe listOf("READ NAME", "BAD: ABCD PQRSTUV")
         unitOfWork.completed shouldBe true
     }
 
@@ -373,7 +387,11 @@ internal class RequestProcessorTest {
 
     private fun runFailRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
-            FailureRemoteResult(400, "SYNTAX ERROR: $query")
+            if (query.contains("BAD")) {
+                FailureRemoteResult(400, "SYNTAX ERROR: $query")
+            } else {
+                SuccessRemoteResult(200, "$query: CHARLIE")
+            }
         }
 
     private fun runSlowRequestProcessor(): TestRecordingRemoteResource =
@@ -384,6 +402,12 @@ internal class RequestProcessorTest {
             } else {
                 SuccessRemoteResult(200, "$query: CHARLIE")
             }
+        }
+
+    private fun runTimeoutRequestProcessor(): TestRecordingRemoteResource =
+        runRecordingRequestProcessor { query ->
+            SECONDS.sleep(2)
+            SuccessRemoteResult(200, "$query: TOOK 30 SECONDS")
         }
 
     private fun runRecordingRequestProcessor(

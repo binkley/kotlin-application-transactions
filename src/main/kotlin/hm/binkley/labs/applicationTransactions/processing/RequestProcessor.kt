@@ -7,6 +7,7 @@ import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
+import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
@@ -65,9 +66,13 @@ class RequestProcessor(
         workerPool.submit { respondToClient(request) }
     }
 
-    private fun runSerialForWrites(request: RemoteQuery) {
+    private fun runSerialForWrites(request: RemoteQuery): RemoteResult {
         waitForAllToComplete()
-        respondToClient(request)
+        val result = respondToClient(request)
+        if (result is FailureRemoteResult) {
+            logFailedQueries(request)
+        }
+        return result
     }
 
     private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
@@ -92,7 +97,9 @@ class RequestProcessor(
                 }
 
                 is WriteWorkUnit -> {
-                    runSerialForWrites(currentWork as RemoteQuery)
+                    val result = runSerialForWrites(currentWork as RemoteQuery)
+                    if (result is FailureRemoteResult)
+                        return
                 }
             }
 
@@ -110,8 +117,11 @@ class RequestProcessor(
         }
     }
 
-    private fun respondToClient(request: RemoteQuery) =
-        request.result.complete(remote.callWithBusyRetry(request.query))
+    private fun respondToClient(request: RemoteQuery): RemoteResult {
+        val result = remote.callWithBusyRetry(request.query)
+        request.result.complete(result)
+        return result
+    }
 
     private fun respondToClientWithBug(
         startWork: UnitOfWorkScope,
@@ -122,10 +132,10 @@ class RequestProcessor(
             FailureRemoteResult(
                 500,
                 "BUG: Bad work unit" +
-                    " [expected id: ${startWork.id};" +
-                    " expected total work units: ${startWork.expectedUnits};" +
-                    " expected current item: $expectedCurrent]: " +
-                    " request: $currentWorkUnit"
+                        " [expected id: ${startWork.id};" +
+                        " expected total work units: ${startWork.expectedUnits};" +
+                        " expected current item: $expectedCurrent]: " +
+                        " request: $currentWorkUnit"
 
             )
         )
@@ -239,4 +249,9 @@ private fun logBadWorkUnit(currentWork: UnitOfWorkScope) {
 /** @todo Logging */
 private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
     println("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
+}
+
+/** @todo Logging */
+private fun logFailedQueries(request: RemoteQuery) {
+    println("TODO: Logging: FAILED QUERY! -> $request")
 }
