@@ -48,7 +48,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should fail syntax errors`() {
-        val remoteResource = runFailRequestProcessor()
+        val remoteResource = runSuccessRequestProcessor()
 
         val request = OneRead("BAD: ABCD PQRSTUV")
         requestQueue.offer(request)
@@ -143,14 +143,15 @@ internal class RequestProcessorTest {
     fun `should leave unit of work when write fails`() {
         val remoteResource = runSuccessRequestProcessor()
 
-        val unitOfWork = UnitOfWork(1)
-        val request = unitOfWork.writeOne("WRITE NAME")
+        val unitOfWork = UnitOfWork(2)
+        val request = unitOfWork.writeOne("BAD THING")
         requestQueue.offer(request)
 
-        val result = request.result.get()
-        (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
-        remoteResource.calls shouldBe listOf("WRITE NAME")
-        unitOfWork.completed shouldBe true
+        request.result.get()
+
+        remoteResource.calls shouldBe listOf("BAD THING")
+        // TODO: Should uow automatically complete when a call fails?
+        unitOfWork.completed shouldBe false
     }
 
     @Test
@@ -274,7 +275,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should abort unit of work with undo instructions but some fail`() {
-        val remoteResource = runFailRequestProcessor()
+        val remoteResource = runSuccessRequestProcessor()
 
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
@@ -382,13 +383,8 @@ internal class RequestProcessorTest {
 
     private fun runSuccessRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
-            SuccessRemoteResult(200, "$query: CHARLIE")
-        }
-
-    private fun runFailRequestProcessor(): TestRecordingRemoteResource =
-        runRecordingRequestProcessor { query ->
             if (query.contains("BAD")) {
-                FailureRemoteResult(400, "SYNTAX ERROR: $query")
+                FailureRemoteResult(400, "PROBLEM: $query")
             } else {
                 SuccessRemoteResult(200, "$query: CHARLIE")
             }

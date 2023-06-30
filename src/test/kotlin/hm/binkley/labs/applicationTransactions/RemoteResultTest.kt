@@ -14,9 +14,16 @@ internal class RemoteResultTest {
 
     @Test
     fun `should fail`() {
+        val failure = FailureRemoteResult(500, "I MESSED UP")
+
+        failure.status shouldBe 500
+        failure.errorMessage shouldBe "I MESSED UP"
+    }
+
+    @Test
+    fun `should be busy`() {
         val failure = FailureRemoteResult(429, "TRY AGAIN LATER")
 
-        failure.status shouldBe 429
-        failure.errorMessage shouldBe "TRY AGAIN LATER"
+        failure.isBusyRemoteResource() shouldBe true
     }
 }
