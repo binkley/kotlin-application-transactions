@@ -144,12 +144,18 @@ internal class RequestProcessorTest {
         val remoteResource = runRequestProcessor()
 
         val unitOfWork = UnitOfWork(2)
-        val request = unitOfWork.writeOne("BAD THING")
-        requestQueue.offer(request)
+        val workUnitWrite = unitOfWork.writeOne("BAD THING")
+        requestQueue.offer(workUnitWrite)
 
-        request.result.get()
+        val simpleRead = OneRead("READ NAME")
+        requestQueue.offer(simpleRead)
 
-        remoteResource.calls shouldBe listOf("BAD THING")
+        workUnitWrite.result.get()
+        simpleRead.result.get()
+
+        // If we reach here then the simple read did not block
+        remoteResource.calls shouldBe listOf("BAD THING", "READ NAME")
+
         // TODO: Should uow automatically complete when a call fails?
         unitOfWork.completed shouldBe false
     }
