@@ -112,9 +112,9 @@ esac
 ((rc = 0)) || true
 if $run; then
     if $mutation; then
-        targets='-DwithHistory clean verify'
+        targets='-DwithHistory verify'
     else
-        targets='clean test jacoco:report jacoco:check'
+        targets='test jacoco:report jacoco:check'
     fi
 
     # shellcheck disable=SC2086
