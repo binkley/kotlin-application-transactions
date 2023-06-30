@@ -397,7 +397,7 @@ internal class RequestProcessorTest {
             RequestProcessor(
                 requestQueue,
                 threadPool,
-                RemoteResourceManager(remoteResource)
+                RemoteResourceManager(remoteResource = remoteResource)
             )
         )
 
