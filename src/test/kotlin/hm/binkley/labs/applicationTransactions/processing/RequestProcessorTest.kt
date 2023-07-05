@@ -11,6 +11,7 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import hm.binkley.labs.applicationTransactions.client.UnitOfWork
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
+    private val logger = mutableListOf<String>()
 
     @AfterEach
     fun cleanup() = threadPool.shutdown()
@@ -56,6 +58,7 @@ internal class RequestProcessorTest {
         val result = request.result.get()
         result should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls shouldBe listOf("BAD: ABCD PQRSTUV")
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -158,6 +161,9 @@ internal class RequestProcessorTest {
 
         // TODO: Should uow automatically complete when a call fails?
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -180,6 +186,9 @@ internal class RequestProcessorTest {
 
         remoteResource.calls shouldBe listOf("WRITE NAME", "FAVORITE COLOR")
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -294,6 +303,9 @@ internal class RequestProcessorTest {
         abort.result.get() shouldBe false
         remoteResource.calls shouldBe listOf("READ NAME", "BAD: ABCD PQRSTUV")
         unitOfWork.completed shouldBe true
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -311,6 +323,9 @@ internal class RequestProcessorTest {
 
         martian.result.get() should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls.shouldBeEmpty()
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -329,6 +344,9 @@ internal class RequestProcessorTest {
 
         badAbandon.result.get() shouldBe false
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -348,6 +366,9 @@ internal class RequestProcessorTest {
 
         badQuery.result.get() should beInstanceOf<FailureRemoteResult>()
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -367,6 +388,9 @@ internal class RequestProcessorTest {
 
         badQuery.result.get() should beInstanceOf<FailureRemoteResult>()
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     @Test
@@ -385,6 +409,9 @@ internal class RequestProcessorTest {
         martian.result.get() should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls.shouldBeEmpty()
         unitOfWork.completed shouldBe false
+
+        // TODO: Logging policy is outside scope for this project
+        logger.shouldNotBeEmpty()
     }
 
     private fun runRequestProcessor(): TestRecordingRemoteResource =
@@ -419,9 +446,10 @@ internal class RequestProcessorTest {
 
         threadPool.submit(
             RequestProcessor(
-                requestQueue,
-                threadPool,
-                RemoteResourceManager(remoteResource = remoteResource)
+                requestQueue = requestQueue,
+                threadPool = threadPool,
+                remote = RemoteResourceManager(remoteResource = remoteResource),
+                logger = logger,
             )
         )
 

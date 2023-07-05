@@ -12,7 +12,6 @@ import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
 import java.util.UUID
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -29,7 +28,7 @@ class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remote: RemoteResourceManager,
-    private val logger: MutableList<String> = CopyOnWriteArrayList(),
+    private val logger: MutableList<String>,
     /** How long to wait to retry scanning for the next work unit. */
     private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {

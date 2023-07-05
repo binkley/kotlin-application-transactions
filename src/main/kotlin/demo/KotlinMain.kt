@@ -30,7 +30,8 @@ fun main() {
         SuccessRemoteResult(200, query, "REMOTE: $query")
     }
 
-    val processor = RequestProcessor(requestQueue, threadPool, remote)
+    val processor =
+        RequestProcessor(requestQueue, threadPool, remote, mutableListOf())
     threadPool.submit(processor)
 
     val client = RequestClient(requestQueue)
