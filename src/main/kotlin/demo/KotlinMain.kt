@@ -1,5 +1,6 @@
 package demo
 
+import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.client.RequestClient
@@ -7,9 +8,15 @@ import hm.binkley.labs.applicationTransactions.processing.RemoteResourceManager
 import hm.binkley.labs.applicationTransactions.processing.RequestProcessor
 import lombok.Generated
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors.newCachedThreadPool
 
-/** Runs the demo. */
+/**
+ * Runs the demo.
+ * Threading is tough:
+ * Note fetching remote values even with failure to ensure timing works right.
+ * This is dependent on your language and framework.
+ */
 @Generated // Lie to JaCoCo
 fun main() {
     println("SET UP THE REQUEST PROCESSOR AND CONNECTION TO REMOTE RESOURCE")
@@ -25,25 +32,44 @@ fun main() {
     val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     val threadPool = newCachedThreadPool()
     val remoteRequests = mutableListOf<String>()
-    val remote = RemoteResourceManager { query ->
-        remoteRequests.add(query)
-        SuccessRemoteResult(200, query, "REMOTE: $query")
-    }
+    val remoteResourceManager = demoRemoteResourceManager(remoteRequests)
+
+    val logger = ConcurrentLinkedQueue<String>()
+    logToConsole(threadPool, logger)
 
     val processor =
-        RequestProcessor(requestQueue, threadPool, remote, mutableListOf())
+        RequestProcessor(
+            requestQueue,
+            threadPool,
+            remoteResourceManager,
+            logger,
+        )
     threadPool.submit(processor)
 
     val client = RequestClient(requestQueue)
 
+    println("ALL ABOVE CODE IN THE DEMO WAS SETUP")
+
     println("RUN 10 SIMPLE READ REQUESTS IN PARALLEL")
     println("READ REQUESTS FROM CALLER BLOCK UNTIL RESULTS RETURN")
+
     for (i in 1..10) {
         val name = client.readOne("READ NAME")
         println("RESULT: $name")
     }
     println("WRITE SIMPLE REQUEST EXCLUSIVELY BLOCK UNTIL READS COMPLETE")
-    client.writeOne("CHANGE NAME")
+    println(client.writeOne("CHANGE NAME"))
+
+    println("DEMONSTRATE ASYNC LOGGING")
+    try {
+        println(client.readOne("ABCD PQRSTUV"))
+    } catch (e: IllegalStateException) {
+        logger.offer(e.toString())
+    }
+    // Busy work so logging shows up before the next demo block.
+    // The logger thread may run slower than this one
+    while (!Thread.interrupted() && !logger.isEmpty())
+        println("WAITING FOR LOG LINE ...")
 
     println("START A UNIT OF WORK EXPECTING UP TO 2 REQUESTS")
     println(
@@ -54,21 +80,20 @@ fun main() {
     println("USE OF `use` IS KOTLIN-SPECIFIC: RELEASE RESOURCE AFTER")
     uow.use {
         println("- SEND A READ WORK UNIT, AND CAN RUN IN PARALLEL")
-        val falseCondition = uow.readOne("READ CONDITION")
-        if (!falseCondition.contains("READ CONDITION")) {
+        var name = uow.readOne("READ NAME")
+        println(name)
+        if (!name.contains("READ NAME")) {
             uow.cancel()
             return
         }
 
         println("- SEND A WRITE WORK UNIT, AND RUN EXCLUSIVELY")
-        val writeResult = uow.writeOne("READ COMPLEX RELATIONSHIP")
-        if (!writeResult.contains("REMOTE")) {
+        name = uow.writeOne("SOMETHING FANCY WITH NAME")
+        println(name)
+        if (!name.contains("REMOTE")) {
             uow.abort("SOME UNDO INSTRUCTION", "ANOTHER UNDO INSTRUCTION")
             return
         }
-
-        println("WRITES ARE AUTO-COMMITTED WITHOUT SPECIFIC UNDO IN ABORT")
-        println("THERE MAY NOT BE ANY SENSE OF \"ISOLATION\" FOR THE REMOTE")
     }
 
     println("CLEANUP MAYBE HANDLED BY A FRAMEWORK")
@@ -81,4 +106,38 @@ fun main() {
         }"
     )
     threadPool.shutdownNow()
+}
+
+fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
+    RemoteResourceManager { query ->
+        remoteRequests.add(query)
+
+        when {
+            query.contains("NAME") ->
+                SuccessRemoteResult(200, query, "REMOTE: $query")
+
+            else ->
+                FailureRemoteResult(400, query, "BAD SYNTAX: $query")
+        }
+    }
+
+/**
+ * Reading through the code, this is "noise."
+ * It prints log messages in the background:
+ * A better strategy would use a logging facility.
+ */
+private fun logToConsole(
+    threadPool: ExecutorService,
+    logger: ConcurrentLinkedQueue<String>,
+) {
+    threadPool.submit {
+        while (!Thread.interrupted()) {
+            when (val logMessage = logger.poll()) {
+                null -> { /* Busy retry */
+                }
+
+                else -> println(logMessage)
+            }
+        }
+    }
 }

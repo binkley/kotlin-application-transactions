@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 internal class RequestProcessorTest {
     private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
-    private val logger = mutableListOf<String>()
+    private val logger = ConcurrentLinkedQueue<String>()
 
     @AfterEach
     fun cleanup() = threadPool.shutdown()
@@ -448,7 +448,9 @@ internal class RequestProcessorTest {
             RequestProcessor(
                 requestQueue = requestQueue,
                 threadPool = threadPool,
-                remote = RemoteResourceManager(remoteResource = remoteResource),
+                remoteResourceManager = RemoteResourceManager(
+                    remoteResource = remoteResource
+                ),
                 logger = logger,
             )
         )

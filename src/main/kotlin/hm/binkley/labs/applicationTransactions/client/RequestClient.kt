@@ -9,8 +9,9 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.Queue
 
 /**
- * Convenience class for sending requests to a single-threaded state machine
- * controlling access to a remote resource that does not support transactions.
+ * Convenience class for sending requests to a single-threaded state machine.
+ * The state machine controls access to a remote resource that does not support
+ * transactions.
  */
 class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
     /**
@@ -20,7 +21,7 @@ class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
     fun readOne(query: String) = runRequest(OneRead(query))
 
     /**
-     * Send a single non-transactional,exclusive write request to a remote
+     * Send a single non-transactional, exclusive write request to a remote
      * resource.
      * Writes run serially.
      */

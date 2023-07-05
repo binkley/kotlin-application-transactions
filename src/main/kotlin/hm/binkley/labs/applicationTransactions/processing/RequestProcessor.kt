@@ -27,8 +27,9 @@ import java.util.concurrent.TimeUnit.SECONDS
 class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
-    private val remote: RemoteResourceManager,
-    private val logger: MutableList<String>,
+    private val remoteResourceManager: RemoteResourceManager,
+    /** An utterly generic idea of a logger. */
+    private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
     private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {
@@ -116,7 +117,7 @@ class RequestProcessor(
     }
 
     private fun respondToClient(request: RemoteQuery): RemoteResult {
-        val result = remote.callWithBusyRetry(request.query)
+        val result = remoteResourceManager.callWithBusyRetry(request.query)
         if (result is FailureRemoteResult) {
             logFailedQueries(result)
         }
@@ -204,7 +205,7 @@ class RequestProcessor(
         waitForAllToComplete()
         var outcome = true
         request.undo.forEach { query ->
-            val result = remote.callWithBusyRetry(query)
+            val result = remoteResourceManager.callWithBusyRetry(query)
             if (result is FailureRemoteResult) {
                 logFailedQueries(result)
                 outcome = false
@@ -245,16 +246,16 @@ class RequestProcessor(
 
     /** @todo Logging */
     private fun logFailedQueries(result: RemoteResult) {
-        logger.add("TODO: Logging: FAILED QUERY! -> $result")
+        logger.offer("TODO: Logging: FAILED QUERY! -> $result")
     }
 
     /** @todo Logging */
     private fun logBadWorkUnit(currentWork: UnitOfWorkScope) {
-        logger.add("TODO: Logging: BAD WORK UNIT! -> $currentWork")
+        logger.offer("TODO: Logging: BAD WORK UNIT! -> $currentWork")
     }
 
     /** @todo Logging */
     private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
-        logger.add("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
+        logger.offer("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
     }
 }
