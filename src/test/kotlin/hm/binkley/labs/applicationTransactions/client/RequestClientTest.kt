@@ -142,11 +142,13 @@ internal class RequestClientTest {
             val result = if (succeedOrFail) {
                 SuccessRemoteResult(
                     200,
+                    remoteQuery.query,
                     responseForSuccess,
                 )
             } else {
                 FailureRemoteResult(
                     400,
+                    remoteQuery.query,
                     "SYNTAX ERROR: ${remoteQuery.query}",
                 )
             }

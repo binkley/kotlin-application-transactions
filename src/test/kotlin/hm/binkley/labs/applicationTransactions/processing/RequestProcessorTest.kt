@@ -390,9 +390,9 @@ internal class RequestProcessorTest {
     private fun runRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
             if (query.contains("BAD")) {
-                FailureRemoteResult(400, "PROBLEM: $query")
+                FailureRemoteResult(400, query, "PROBLEM: $query")
             } else {
-                SuccessRemoteResult(200, "$query: CHARLIE")
+                SuccessRemoteResult(200, query, "$query: CHARLIE")
             }
         }
 
@@ -400,9 +400,13 @@ internal class RequestProcessorTest {
         runRecordingRequestProcessor { query ->
             if (query.contains("SLOW LORIS")) {
                 MILLISECONDS.sleep(600)
-                SuccessRemoteResult(200, "I TOOK MY TIME ABOUT IT: $query")
+                SuccessRemoteResult(
+                    200,
+                    query,
+                    "I TOOK MY TIME ABOUT IT: $query",
+                )
             } else {
-                SuccessRemoteResult(200, "$query: CHARLIE")
+                SuccessRemoteResult(200, query, "$query: CHARLIE")
             }
         }
 

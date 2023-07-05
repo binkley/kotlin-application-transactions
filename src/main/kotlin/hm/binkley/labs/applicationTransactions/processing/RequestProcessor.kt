@@ -12,6 +12,7 @@ import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -28,6 +29,7 @@ class RequestProcessor(
     private val requestQueue: Queue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remote: RemoteResourceManager,
+    private val logger: MutableList<String> = CopyOnWriteArrayList(),
     /** How long to wait to retry scanning for the next work unit. */
     private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {
@@ -68,11 +70,7 @@ class RequestProcessor(
 
     private fun runSerialForWrites(request: RemoteQuery): RemoteResult {
         waitForAllToComplete()
-        val result = respondToClient(request)
-        if (result is FailureRemoteResult) {
-            logFailedQueries(request)
-        }
-        return result
+        return respondToClient(request)
     }
 
     private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
@@ -120,6 +118,9 @@ class RequestProcessor(
 
     private fun respondToClient(request: RemoteQuery): RemoteResult {
         val result = remote.callWithBusyRetry(request.query)
+        if (result is FailureRemoteResult) {
+            logFailedQueries(result)
+        }
         request.result.complete(result)
         return result
     }
@@ -132,6 +133,7 @@ class RequestProcessor(
         currentWorkUnit.result.complete(
             FailureRemoteResult(
                 500,
+                currentWorkUnit.query,
                 "BUG: Bad work unit" +
                     " [expected id: ${startWork.id};" +
                     " expected total work units: ${startWork.expectedUnits};" +
@@ -203,8 +205,9 @@ class RequestProcessor(
         waitForAllToComplete()
         var outcome = true
         request.undo.forEach { query ->
-            // TODO: Logging? Return outcomes to caller?
-            if (remote.callWithBusyRetry(query) is FailureRemoteResult) {
+            val result = remote.callWithBusyRetry(query)
+            if (result is FailureRemoteResult) {
+                logFailedQueries(result)
                 outcome = false
             }
         }
@@ -240,19 +243,19 @@ class RequestProcessor(
         }
         return null
     }
-}
 
-/** @todo Logging */
-private fun logBadWorkUnit(currentWork: UnitOfWorkScope) {
-    println("TODO: Logging: BAD WORK UNIT! -> $currentWork")
-}
+    /** @todo Logging */
+    private fun logFailedQueries(result: RemoteResult) {
+        logger.add("TODO: Logging: FAILED QUERY! -> $result")
+    }
 
-/** @todo Logging */
-private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
-    println("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
-}
+    /** @todo Logging */
+    private fun logBadWorkUnit(currentWork: UnitOfWorkScope) {
+        logger.add("TODO: Logging: BAD WORK UNIT! -> $currentWork")
+    }
 
-/** @todo Logging */
-private fun logFailedQueries(request: RemoteQuery) {
-    println("TODO: Logging: FAILED QUERY! -> $request")
+    /** @todo Logging */
+    private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
+        logger.add("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
+    }
 }

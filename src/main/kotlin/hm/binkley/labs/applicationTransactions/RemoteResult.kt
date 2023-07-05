@@ -8,15 +8,18 @@ package hm.binkley.labs.applicationTransactions
  */
 sealed interface RemoteResult {
     val status: Int
+    val query: String
 }
 
 data class SuccessRemoteResult(
     override val status: Int,
+    override val query: String,
     val response: String,
 ) : RemoteResult
 
 data class FailureRemoteResult(
     override val status: Int,
+    override val query: String,
     val errorMessage: String,
 ) : RemoteResult {
     /**

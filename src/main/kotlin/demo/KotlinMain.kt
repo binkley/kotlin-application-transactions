@@ -16,7 +16,7 @@ fun main() {
     println("THIS EXAMPLE FOLLOWS \"HAPPY PATH\". THE REMOTE ALWAYS SUCCEEDS")
     println(
         """
-        THE 3 MINIMAL DEPENDENCES ARE:
+        THE 3 MINIMAL DEPENDENCIES ARE:
         - A SEARCHABLE REQUEST QUEUE FROM CLIENT (CALLER) AND PROCESSOR
         - A THREAD POOL FOR PARALLELLING READ REQUESTS
         - A REMOTE RESOURCE THIS PROJECT PROTECTS FROM INCONSISTENCY
@@ -27,7 +27,7 @@ fun main() {
     val remoteRequests = mutableListOf<String>()
     val remote = RemoteResourceManager { query ->
         remoteRequests.add(query)
-        SuccessRemoteResult(200, "REMOTE: $query")
+        SuccessRemoteResult(200, query, "REMOTE: $query")
     }
 
     val processor = RequestProcessor(requestQueue, threadPool, remote)

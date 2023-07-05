@@ -10,7 +10,7 @@ internal class RemoteResourceManagerTest {
     @Test
     fun `should succeed on first try`() {
         val remoteResource = TestRecordingRemoteResource { _ ->
-            SuccessRemoteResult(200, "CHARLIE")
+            SuccessRemoteResult(200, "READ NAME", "CHARLIE")
         }
         val manager = RemoteResourceManager(remoteResource = remoteResource)
 
@@ -23,7 +23,7 @@ internal class RemoteResourceManagerTest {
     @Test
     fun `should fail on first try`() {
         val remoteResource = TestRecordingRemoteResource { query ->
-            FailureRemoteResult(400, "SYNTAX ERROR: $query")
+            FailureRemoteResult(400, query, "SYNTAX ERROR: $query")
         }
         val manager = RemoteResourceManager(remoteResource = remoteResource)
 
@@ -41,9 +41,9 @@ internal class RemoteResourceManagerTest {
             override fun call(query: String): RemoteResult {
                 return if (busy) {
                     busy = false
-                    FailureRemoteResult(429, "TRY AGAIN")
+                    FailureRemoteResult(429, query, "TRY AGAIN")
                 } else {
-                    SuccessRemoteResult(200, "CHARLIE")
+                    SuccessRemoteResult(200, query, "CHARLIE")
                 }
             }
         }
@@ -59,7 +59,7 @@ internal class RemoteResourceManagerTest {
     @Test
     fun `should retry only once when remote stays busy`() {
         val remoteResource = TestRecordingRemoteResource {
-            FailureRemoteResult(429, "TRY AGAIN")
+            FailureRemoteResult(429, "SOME DATA", "TRY AGAIN")
         }
         val manager = RemoteResourceManager(remoteResource = remoteResource)
 
