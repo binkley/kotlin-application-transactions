@@ -124,7 +124,13 @@ val otherData = client.readOne("A DIFFERENT READ") // runs in parallel
 if ("OK" == data)
     client.writeOne("CHANGE SOME DATA") // Changes are "auto committed"
 
-client.inTransaction(2 /* expected max calls */).use { txn ->
+try {
+    println(client.readOne("ABCD PQRSTUV")) // Bad syntax
+} catch (e: IllegalStateException) {
+    // Log or respond to caller
+}
+
+client.inExclusiveAccess(2 /* expected max calls */).use { txn ->
     val status = txn.readOne("CHECK SOMETHING")
     if ("OK" != status) {
         txn.cancel() // Example of early return from transaction
