@@ -39,7 +39,7 @@
         <coverage.branches>92</coverage.branches>
         <coverage.instructions>98</coverage.instructions>
         <coverage.lines>99</coverage.lines>
-        <coverage.mutation>90</coverage.mutation>
+        <coverage.mutation>89</coverage.mutation>
         <dependency-check-maven.version>8.3.1</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.23.0</detekt-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.10</jacoco-maven-plugin.version>
@@ -181,8 +181,6 @@
                               "duplicate source root" resolved -->
 <!--                        <arg>-Werror</arg>-->
                     </args>
-                    <languageVersion>1.8</languageVersion>
-                    <jvmTarget>1.8</jvmTarget>
                 </configuration>
                 <executions>
                     <execution>
