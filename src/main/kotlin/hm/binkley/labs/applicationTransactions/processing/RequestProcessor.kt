@@ -31,7 +31,7 @@ class RequestProcessor(
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
-    private val retryRequestQueueForWorkUnitsInSeconds: Long = 1L,
+    private val maxWaitForWorkUnitsInSeconds: Long = 1L,
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
@@ -154,7 +154,7 @@ class RequestProcessor(
      */
     private fun waitForAllToComplete() {
         workerPool.awaitCompletion(
-            retryRequestQueueForWorkUnitsInSeconds,
+            maxWaitForWorkUnitsInSeconds,
             SECONDS
         )
     }
@@ -219,7 +219,7 @@ class RequestProcessor(
         if (null != found) return found
 
         // Let client process some, and try again
-        SECONDS.sleep(retryRequestQueueForWorkUnitsInSeconds)
+        SECONDS.sleep(maxWaitForWorkUnitsInSeconds)
 
         return pollForNextWorkUnit(id)
     }
