@@ -12,7 +12,7 @@ internal class RemoteResourceManagerTest {
         val remoteResource = TestRecordingRemoteResource { _ ->
             SuccessRemoteResult(200, "READ NAME", "CHARLIE")
         }
-        val manager = RemoteResourceManager(remoteResource = remoteResource)
+        val manager = RemoteResourceManager(remoteResource)
 
         val result = manager.callWithBusyRetry("READ NAME")
 
@@ -25,7 +25,7 @@ internal class RemoteResourceManagerTest {
         val remoteResource = TestRecordingRemoteResource { query ->
             FailureRemoteResult(400, query, "SYNTAX ERROR: $query")
         }
-        val manager = RemoteResourceManager(remoteResource = remoteResource)
+        val manager = RemoteResourceManager(remoteResource)
 
         val result = manager.callWithBusyRetry("ABCD PQRSTUV")
 
@@ -48,7 +48,7 @@ internal class RemoteResourceManagerTest {
             }
         }
         val remoteResource = TestRecordingRemoteResource(realRemote)
-        val manager = RemoteResourceManager(remoteResource = remoteResource)
+        val manager = RemoteResourceManager(remoteResource)
 
         val result = manager.callWithBusyRetry("READ NAME")
 
@@ -61,7 +61,7 @@ internal class RemoteResourceManagerTest {
         val remoteResource = TestRecordingRemoteResource {
             FailureRemoteResult(429, "SOME DATA", "TRY AGAIN")
         }
-        val manager = RemoteResourceManager(remoteResource = remoteResource)
+        val manager = RemoteResourceManager(remoteResource)
 
         val result = manager.callWithBusyRetry("READ NAME")
 

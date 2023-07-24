@@ -16,9 +16,9 @@ import java.util.concurrent.TimeUnit.SECONDS
  * Named parameters in function calls may come into advantage.
  */
 class RemoteResourceManager(
+    private val remoteResource: RemoteResource,
     /** How long to wait for the remote resource to become idle. */
     private val waitBeforeRetryRemoteInSeconds: Long = 1L,
-    private val remoteResource: RemoteResource,
 ) {
     /**
      * Retry a busy remote resource exactly once, pausing

@@ -109,7 +109,7 @@ fun main() {
 }
 
 fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
-    RemoteResourceManager { query ->
+    RemoteResourceManager({ query ->
         remoteRequests.add(query)
 
         when {
@@ -119,7 +119,7 @@ fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
             else ->
                 FailureRemoteResult(400, query, "BAD SYNTAX: $query")
         }
-    }
+    })
 
 /**
  * Reading through the code, this is "noise."

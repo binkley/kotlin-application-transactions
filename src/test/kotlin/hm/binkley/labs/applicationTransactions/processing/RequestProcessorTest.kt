@@ -448,9 +448,7 @@ internal class RequestProcessorTest {
             RequestProcessor(
                 requestQueue = requestQueue,
                 threadPool = threadPool,
-                remoteResourceManager = RemoteResourceManager(
-                    remoteResource = remoteResource
-                ),
+                remoteResourceManager = RemoteResourceManager(remoteResource),
                 logger = logger,
             )
         )
