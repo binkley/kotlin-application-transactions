@@ -159,4 +159,22 @@ threadPool.submit(
 where specific to your language `requestQueue` is a thread-safe FIFO queue 
 that is searchable, `threadPool` is a facility for starting and managing 
 threads, and `remoteResource` represents calling the remote resource you 
-would like to provide transactions for. 
+would like to provide transactions for.
+
+### Configuration
+
+There are only two knobs for tweaking behavior:
+
+- `maxWaitForWorkUnitsInSeconds` passed when constructing `RequestProcessor`
+  (default 1s).
+  How long the processor waits for the next unit in a unit of work before 
+  timing out and canceling the unit of work
+- `awaitRemoteInSeconds` passed when constructing `RemoteResourceManager`
+  (default 1s).
+  How long to wait before retrying the remote resource if it was busy the 
+  first attempt.
+  The current code only retries 1 time
+
+Another configuration is how you set up your thread pool.
+That is outside the scope of this project, but can be important to make best 
+use of threads.
