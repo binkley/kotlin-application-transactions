@@ -169,8 +169,8 @@ There are only two knobs for tweaking behavior:
   (default 1s).
   How long the processor waits for the next unit in a unit of work before 
   timing out and canceling the unit of work
-- `awaitRemoteInSeconds` passed when constructing `RemoteResourceManager`
-  (default 1s).
+- `waitBeforeRetryRemoteInSeconds` passed when constructing 
+  `RemoteResourceManager` (default 1s).
   How long to wait before retrying the remote resource if it was busy the 
   first attempt.
   The current code only retries 1 time
