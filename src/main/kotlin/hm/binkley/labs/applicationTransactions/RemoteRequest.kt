@@ -1,5 +1,6 @@
 package hm.binkley.labs.applicationTransactions
 
+import hm.binkley.labs.applicationTransactions.client.UnitOfWork
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -43,7 +44,7 @@ sealed interface UnitOfWorkScope {
     /** 1-based */
     val currentUnit: Int
 
-    /** See `UnitOfWork.complete`. */
+    /** See [UnitOfWork.completed]. */
     fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
