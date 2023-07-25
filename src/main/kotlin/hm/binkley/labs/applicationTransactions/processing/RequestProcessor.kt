@@ -91,11 +91,15 @@ class RequestProcessor(
                 }
 
                 is ReadWorkUnit -> {
+                    // Note: as this does not run in the current thread, we
+                    // cannot check the return type (success vs failure), and
+                    // the caller needs to send `AbandonUnitOfWork` to stop
+                    // processing of the unit of work
                     runParallelForReads(currentWork)
                 }
 
                 is WriteWorkUnit -> {
-                    val result = runSerialForWrites(currentWork as RemoteQuery)
+                    val result = runSerialForWrites(currentWork)
                     if (result is FailureRemoteResult) {
                         return
                     }
