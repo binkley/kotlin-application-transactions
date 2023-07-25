@@ -15,6 +15,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
+import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -414,6 +415,41 @@ internal class RequestProcessorTest {
         logger.shouldNotBeEmpty()
     }
 
+    @Test
+    fun `should fail for write when read requests timeout`() {
+        val remoteResource = runTimingOutRequestProcessor(1)
+
+        val read = OneRead("READ NAME")
+        requestQueue.offer(read)
+
+        val write = OneWrite("WRITE NAME")
+        requestQueue.offer(write)
+
+        val writeResult = write.result.get()
+
+        writeResult.shouldBeInstanceOf<FailureRemoteResult>()
+        writeResult.status shouldBe 504 // Gateway timeout
+        remoteResource.calls shouldBe listOf("READ NAME")
+        logger.shouldNotBeEmpty()
+    }
+
+    @Test
+    fun `should fail for rollback when read work units timeout`() {
+        val remoteResource = runTimingOutRequestProcessor(1)
+
+        val unitOfWork = UnitOfWork(17)
+        val read = unitOfWork.readOne("READ NAME")
+        requestQueue.offer(read)
+        val abort = unitOfWork.abort("UNDO RENAME")
+        requestQueue.offer(abort)
+
+        read.result.get()
+
+        abort.result.get() shouldBe false
+        remoteResource.calls shouldBe listOf("READ NAME")
+        logger.shouldNotBeEmpty()
+    }
+
     private fun runRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
             if (query.contains("BAD")) {
@@ -450,6 +486,29 @@ internal class RequestProcessorTest {
                 threadPool = threadPool,
                 remoteResourceManager = RemoteResourceManager(remoteResource),
                 logger = logger,
+            )
+        )
+
+        return remoteResource
+    }
+
+    private fun runTimingOutRequestProcessor(
+        timeout: Long
+    ): TestRecordingRemoteResource {
+        val remoteResource = TestRecordingRemoteResource { query ->
+            if (query.contains("READ")) {
+                SECONDS.sleep(1 + timeout)
+            }
+            SuccessRemoteResult(200, query, "$query: CHARLIE")
+        }
+
+        threadPool.submit(
+            RequestProcessor(
+                requestQueue = requestQueue,
+                threadPool = threadPool,
+                remoteResourceManager = RemoteResourceManager(remoteResource),
+                logger = logger,
+                maxWaitForRemoteResourceInSeconds = timeout,
             )
         )
 

@@ -65,7 +65,7 @@ internal class RemoteResourceManagerTest {
 
         val result = manager.callWithBusyRetry("READ NAME")
 
-        (result as FailureRemoteResult).isBusyRemoteResource() shouldBe true
+        (result as FailureRemoteResult).isBusy() shouldBe true
         remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
     }
 }

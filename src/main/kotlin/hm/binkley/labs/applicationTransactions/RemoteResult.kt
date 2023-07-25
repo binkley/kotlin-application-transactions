@@ -26,5 +26,5 @@ data class FailureRemoteResult(
      * See [_429 Too Many
      * Requests_](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429).
      */
-    fun isBusyRemoteResource() = 429 == status
+    fun isBusy() = 429 == status
 }

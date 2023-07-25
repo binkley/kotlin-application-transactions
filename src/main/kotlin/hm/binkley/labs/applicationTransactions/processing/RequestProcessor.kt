@@ -32,6 +32,8 @@ class RequestProcessor(
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
     private val maxWaitForWorkUnitsInSeconds: Long = 1L,
+    /** How long to wait for the remote resource to complete a read. */
+    private val maxWaitForRemoteResourceInSeconds: Long = 30L,
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
@@ -68,8 +70,17 @@ class RequestProcessor(
         workerPool.submit { respondToClient(request) }
     }
 
+    /**
+     * If timing out waiting for readers to complete, does not execute the
+     * write request.
+     */
     private fun runSerialForWrites(request: RemoteQuery): RemoteResult {
-        waitForAllToComplete()
+        if (!waitForReadersToComplete()) {
+            logSlowReaders()
+            val result = remoteResultTimeout(maxWaitForRemoteResourceInSeconds)
+            request.result.complete(result)
+            return result
+        }
         return respondToClient(request)
     }
 
@@ -156,12 +167,11 @@ class RequestProcessor(
      * However, reads run in parallel, so writes should wait for them to
      * complete (all reads run from the worker pool).
      */
-    private fun waitForAllToComplete() {
+    private fun waitForReadersToComplete() =
         workerPool.awaitCompletion(
-            maxWaitForWorkUnitsInSeconds,
+            maxWaitForRemoteResourceInSeconds,
             SECONDS
         )
-    }
 
     /**
      * Checks for a work unit not part of the current unit of work.
@@ -205,8 +215,17 @@ class RequestProcessor(
         return !isGood
     }
 
+    /**
+     * If timing out waiting for readers to complete, does not execute the
+     * undo instructions.
+     */
     private fun runSerialForRollback(request: AbandonUnitOfWork) {
-        waitForAllToComplete()
+        if (!waitForReadersToComplete()) {
+            logSlowReaders()
+            request.result.complete(false)
+            return
+        }
+
         var outcome = true
         request.undo.forEach { query ->
             val result = remoteResourceManager.callWithBusyRetry(query)
@@ -246,6 +265,19 @@ class RequestProcessor(
             return request
         }
         return null
+    }
+
+    /** Returns a failure when the remote resource times out. */
+    private fun remoteResultTimeout(timeout: Long) =
+        FailureRemoteResult(
+            status = 504,
+            query = "READ", // The exact query is in another thread and unknown
+            errorMessage = "Timeout for a read after $timeout seconds",
+        )
+
+    /** @todo Logging */
+    private fun logSlowReaders() {
+        logger.offer("TODO: Logging: SLOW READERS!")
     }
 
     /** @todo Logging */

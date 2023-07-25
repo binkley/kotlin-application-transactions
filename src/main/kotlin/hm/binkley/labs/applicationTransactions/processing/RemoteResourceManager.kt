@@ -30,7 +30,7 @@ class RemoteResourceManager(
         when (val response = remoteResource.call(query)) {
             is SuccessRemoteResult -> return response
             is FailureRemoteResult -> when {
-                !response.isBusyRemoteResource() -> return response
+                !response.isBusy() -> return response
             }
         }
 

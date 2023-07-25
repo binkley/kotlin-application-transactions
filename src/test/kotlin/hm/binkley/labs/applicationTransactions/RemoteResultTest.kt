@@ -26,6 +26,6 @@ internal class RemoteResultTest {
     fun `should be busy`() {
         val failure = FailureRemoteResult(429, "GET NAME", "TRY AGAIN LATER")
 
-        failure.isBusyRemoteResource() shouldBe true
+        failure.isBusy() shouldBe true
     }
 }
