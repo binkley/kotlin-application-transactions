@@ -13,6 +13,9 @@ import java.util.concurrent.TimeoutException
  * - [areAllDone]
  * - [awaitCompletion]
  *
+ * When ported to another language, this may be a facility provided natively
+ * in thread pools.
+ *
  * See [_How to check if all tasks running on ExecutorService are
  * completed_](https://stackoverflow.com/a/33845730).
  */
@@ -26,17 +29,15 @@ class WorkerPool(private val threadPool: ExecutorService) : AutoCloseable {
     }
 
     fun areAllDone(): Boolean {
-        var allDone = true
-        for (task in runQueue) {
-            allDone = allDone and task.isDone
-        }
-        return allDone
+        for (task in runQueue)
+            if (!task.isDone) return false
+        return true
     }
 
     /**
-     * Wait for all current submitted tasks (reads) to complete&mdash;ensuring
-     * an empty run queue&mdash;,
-     * and the remote resource is available for exclusive access.
+     * Wait for all current submitted tasks (reads) to complete thus ensuring an
+     * empty run queue, and that the remote resource is available for exclusive
+     * access.
      *
      * Note that this sequence:
      * 1. [ExecutorService.shutdown]
@@ -48,15 +49,14 @@ class WorkerPool(private val threadPool: ExecutorService) : AutoCloseable {
      * @return if all tasks completed within the [timeout]
      */
     fun awaitCompletion(timeout: Long, unit: TimeUnit): Boolean {
-        var allCompleted = true
         runQueue.forEach { task ->
             try {
                 task.get(timeout, unit)
             } catch (_: TimeoutException) {
-                allCompleted = false
+                return false
             }
         }
-        return allCompleted
+        return true
     }
 
     @Generated // JaCoCo+Pitest+JUnit not spotting close called in test cleanup
