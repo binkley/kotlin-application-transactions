@@ -48,10 +48,15 @@ sealed interface UnitOfWorkScope {
     fun isLastWorkUnit() = expectedUnits == currentUnit
 }
 
-/** Abandons a unit of work, optionally running undo instructions. */
+/** Abandons a unit of work, optionally running [undo] instructions. */
 data class AbandonUnitOfWork(
     override val id: UUID,
     override val expectedUnits: Int,
+    /**
+     * Rollback instructions, possibly empty.
+     * All instructions are executed: if some fail, rollback continues with
+     * later instructions.
+     */
     val undo: List<String> = emptyList(),
 ) : RemoteRequest, UnitOfWorkScope {
     override val currentUnit = expectedUnits
