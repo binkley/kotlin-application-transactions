@@ -37,7 +37,9 @@ class RequestProcessor(
 ) : Runnable {
     private val workerPool = WorkerPool(threadPool)
 
-    override fun run() { // Never exits until process shut down
+    override fun run() {
+        // The main loop processing client requests to the remote resource.
+        // All other functions support this loop
         while (!Thread.interrupted()) {
             // TODO: Nicer would be "take" instead of "poll", and block until
             //  there is a request available
@@ -46,22 +48,17 @@ class RequestProcessor(
                     /* Do-nothing busy loop waiting for new requests */
                 }
 
-                is OneRead -> {
-                    runParallelForReads(request)
-                }
+                is OneRead -> runParallelForReads(request)
 
                 /*
                  * All others need exclusive access to remote resource.
                  * These are blocking, run serial, and run on this thread
                  */
 
-                is OneWrite -> {
-                    runSerialForWrites(request)
-                }
+                is OneWrite -> runSerialForWrites(request)
 
-                is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit -> {
+                is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit ->
                     runExclusiveForUnitOfWork(request as UnitOfWorkScope)
-                }
             }
         }
     }
@@ -74,15 +71,12 @@ class RequestProcessor(
      * If timing out waiting for readers to complete, does not execute the
      * write request.
      */
-    private fun runSerialForWrites(request: RemoteQuery): RemoteResult {
+    private fun runSerialForWrites(request: RemoteQuery) =
         if (!waitForReadersToComplete()) {
-            logSlowReaders()
-            val result = remoteResultTimeout(maxWaitForRemoteResourceInSeconds)
-            request.result.complete(result)
-            return result
+            readersDidNotFinishInTime(request)
+        } else {
+            respondToClient(request)
         }
-        return respondToClient(request)
-    }
 
     private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
         var currentWork = startWork
@@ -98,6 +92,7 @@ class RequestProcessor(
             when (currentWork) {
                 is AbandonUnitOfWork -> {
                     runSerialForRollback(currentWork)
+
                     return
                 }
 
@@ -126,6 +121,7 @@ class RequestProcessor(
                 logSlowUnitOfWork(currentWork)
                 return
             }
+
             currentWork = found
             ++expectedCurrent
         }
@@ -136,27 +132,10 @@ class RequestProcessor(
         if (result is FailureRemoteResult) {
             logFailedQueries(result)
         }
+
         request.result.complete(result)
+
         return result
-    }
-
-    private fun respondToClientWithBug(
-        startWork: UnitOfWorkScope,
-        currentWorkUnit: RemoteQuery,
-        expectedCurrent: Int,
-    ) {
-        currentWorkUnit.result.complete(
-            FailureRemoteResult(
-                500,
-                currentWorkUnit.query,
-                "BUG: Bad work unit" +
-                    " [expected id: ${startWork.id};" +
-                    " expected total work units: ${startWork.expectedUnits};" +
-                    " expected current item: $expectedCurrent]: " +
-                    " request: $currentWorkUnit"
-
-            )
-        )
     }
 
     /**
@@ -191,11 +170,10 @@ class RequestProcessor(
         // Check caller is on the same page
         var isGood = startWork.expectedUnits == currentWork.expectedUnits
         when (currentWork) {
-            is AbandonUnitOfWork -> {
-                if (!isGood) {
-                    logBadWorkUnit(currentWork)
-                    currentWork.result.complete(false)
-                }
+            is AbandonUnitOfWork -> if (!isGood) {
+                logBadWorkUnit(currentWork)
+
+                currentWork.result.complete(false)
             }
 
             is ReadWorkUnit, is WriteWorkUnit -> {
@@ -203,6 +181,7 @@ class RequestProcessor(
                 isGood = isGood && expectedCurrent == currentWork.currentUnit
                 if (!isGood) {
                     logBadWorkUnit(currentWork)
+
                     respondToClientWithBug(
                         startWork,
                         currentWork as RemoteQuery,
@@ -221,9 +200,7 @@ class RequestProcessor(
      */
     private fun runSerialForRollback(request: AbandonUnitOfWork) {
         if (!waitForReadersToComplete()) {
-            logSlowReaders()
-            request.result.complete(false)
-            return
+            return readersDidNotFinishInTime(request)
         }
 
         var outcome = true
@@ -234,6 +211,7 @@ class RequestProcessor(
                 outcome = false
             }
         }
+
         request.result.complete(outcome)
     }
 
@@ -264,16 +242,24 @@ class RequestProcessor(
             itr.remove()
             return request
         }
+
         return null
     }
 
-    /** Returns a failure when the remote resource times out. */
-    private fun remoteResultTimeout(timeout: Long) =
-        FailureRemoteResult(
-            status = 504,
-            query = "READ", // The exact query is in another thread and unknown
-            errorMessage = "Timeout for a read after $timeout seconds",
-        )
+    private fun readersDidNotFinishInTime(request: RemoteQuery): FailureRemoteResult {
+        logSlowReaders()
+
+        val result = remoteResultTimeout(maxWaitForRemoteResourceInSeconds)
+        request.result.complete(result)
+
+        return result
+    }
+
+    private fun readersDidNotFinishInTime(request: AbandonUnitOfWork) {
+        logSlowReaders()
+
+        request.result.complete(false)
+    }
 
     /** @todo Logging */
     private fun logSlowReaders() {
@@ -295,3 +281,30 @@ class RequestProcessor(
         logger.offer("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
     }
 }
+
+private fun respondToClientWithBug(
+    startWork: UnitOfWorkScope,
+    currentWorkUnit: RemoteQuery,
+    expectedCurrent: Int,
+) {
+    currentWorkUnit.result.complete(
+        FailureRemoteResult(
+            500,
+            currentWorkUnit.query,
+            "BUG: Bad work unit" +
+                " [expected id: ${startWork.id};" +
+                " expected total work units: ${startWork.expectedUnits};" +
+                " expected current item: $expectedCurrent]: " +
+                " request: $currentWorkUnit"
+
+        )
+    )
+}
+
+/** Returns a failure when the remote resource times out. */
+private fun remoteResultTimeout(timeout: Long) =
+    FailureRemoteResult(
+        status = 504,
+        query = "READ", // The exact query is in another thread and unknown
+        errorMessage = "Timeout for a read after $timeout seconds",
+    )
