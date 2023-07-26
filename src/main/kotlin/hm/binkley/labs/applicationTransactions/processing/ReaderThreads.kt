@@ -19,7 +19,7 @@ import java.util.concurrent.TimeoutException
  * See [_How to check if all tasks running on ExecutorService are
  * completed_](https://stackoverflow.com/a/33845730).
  */
-class WorkerPool(private val threadPool: ExecutorService) : AutoCloseable {
+class ReaderThreads(private val threadPool: ExecutorService) : AutoCloseable {
     private val runQueue = ConcurrentLinkedQueue<TrackedFuture<*>>()
 
     fun <T> submit(work: Callable<T>): Future<T> {

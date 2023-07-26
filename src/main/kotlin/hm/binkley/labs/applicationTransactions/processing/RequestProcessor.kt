@@ -35,7 +35,7 @@ class RequestProcessor(
     /** How long to wait for the remote resource to complete a read. */
     private val maxWaitForRemoteResourceInSeconds: Long = 30L,
 ) : Runnable {
-    private val workerPool = WorkerPool(threadPool)
+    private val readerThreads = ReaderThreads(threadPool)
 
     override fun run() {
         // The main loop processing client requests to the remote resource.
@@ -64,7 +64,7 @@ class RequestProcessor(
     }
 
     private fun runParallelForReads(request: RemoteQuery) {
-        workerPool.submit { respondToClient(request) }
+        readerThreads.submit { respondToClient(request) }
     }
 
     /**
@@ -139,15 +139,15 @@ class RequestProcessor(
     }
 
     /**
-     * Only reads are submitted to the worker pool.
+     * Only reads are submitted to the pool of reader threads.
      * Writes do not need waiting on: the code is structured so that writes
-     * always run in serial, never overlapping, and do not involve the worker
-     * pool (all writes run on the current thread).
-     * However, reads run in parallel, so writes should wait for them to
-     * complete (all reads run from the worker pool).
+     * run in serial, and do not involve the reader threads (writes run on the
+     * current thread).
+     * However, as reads run in parallel, writes should wait for them to
+     * complete (all reads run from the pool of reader threads).
      */
     private fun waitForReadersToComplete() =
-        workerPool.awaitCompletion(
+        readerThreads.awaitCompletion(
             maxWaitForRemoteResourceInSeconds,
             SECONDS
         )
