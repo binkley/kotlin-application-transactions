@@ -246,7 +246,8 @@ class RequestProcessor(
         return null
     }
 
-    private fun readersDidNotFinishInTime(request: RemoteQuery): FailureRemoteResult {
+    private fun readersDidNotFinishInTime(request: RemoteQuery):
+        FailureRemoteResult {
         logSlowReaders()
 
         val result = remoteResultTimeout(maxWaitForRemoteResourceInSeconds)
