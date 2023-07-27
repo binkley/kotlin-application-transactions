@@ -11,15 +11,15 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import java.util.concurrent.Future
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.SECONDS
 
 @Timeout(value = 1L, unit = SECONDS) // Tests use threads
 internal class RequestClientTest {
     private val threadPool = newSingleThreadExecutor()
-    private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
+    private val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     private val client = RequestClient(requestQueue)
 
     @AfterEach

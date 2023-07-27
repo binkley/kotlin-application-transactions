@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit.SECONDS
  */
 @Timeout(value = 5, unit = SECONDS) // Tests use threads
 internal class RequestProcessorTest {
-    private val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
+    private val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
     private val logger = ConcurrentLinkedQueue<String>()
 

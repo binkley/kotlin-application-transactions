@@ -6,14 +6,14 @@ import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
-import java.util.Queue
+import java.util.concurrent.BlockingQueue
 
 /**
  * Convenience class for sending requests to a single-threaded state machine.
  * The state machine controls access to a remote resource that does not support
  * transactions.
  */
-class RequestClient(private val requestQueue: Queue<RemoteRequest>) {
+class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
     /**
      * Send a single non-transactional read request to a remote resource.
      * Reads run in parallel.

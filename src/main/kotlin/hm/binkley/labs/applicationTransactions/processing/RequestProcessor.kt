@@ -12,6 +12,7 @@ import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
 import java.util.UUID
+import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit.SECONDS
  *   when a client caller is slow, cancel the unit of work
  */
 class RequestProcessor(
-    private val requestQueue: Queue<RemoteRequest>,
+    private val requestQueue: BlockingQueue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remoteResourceManager: RemoteResourceManager,
     /** An utterly generic idea of a logger. */
@@ -43,12 +44,9 @@ class RequestProcessor(
         while (!Thread.interrupted()) {
             // TODO: BlockingQueue will wait for the first element to become
             //  available, and is a cleaner choice: no busy waiting
-            //  This code uses plain Queue to improve clarity to the reader
-            when (val request = requestQueue.poll()) {
-                null -> {
-                    /* Do-nothing busy loop waiting for new requests */
-                }
-
+            //  A plain Queue would be easier for the reader to understand, but
+            //  entails a busy-retry loop
+            when (val request = requestQueue.take()) {
                 is OneRead -> runParallelForReads(request)
 
                 /*

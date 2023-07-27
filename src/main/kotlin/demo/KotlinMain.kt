@@ -7,9 +7,10 @@ import hm.binkley.labs.applicationTransactions.client.RequestClient
 import hm.binkley.labs.applicationTransactions.processing.RemoteResourceManager
 import hm.binkley.labs.applicationTransactions.processing.RequestProcessor
 import lombok.Generated
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors.newCachedThreadPool
+import java.util.concurrent.LinkedBlockingQueue
 
 /**
  * Runs the demo.
@@ -29,12 +30,12 @@ fun main() {
         - A REMOTE RESOURCE THIS PROJECT PROTECTS FROM INCONSISTENCY
         """.trimIndent()
     )
-    val requestQueue = ConcurrentLinkedQueue<RemoteRequest>()
+    val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     val threadPool = newCachedThreadPool()
     val remoteRequests = mutableListOf<String>()
     val remoteResourceManager = demoRemoteResourceManager(remoteRequests)
 
-    val logger = ConcurrentLinkedQueue<String>()
+    val logger = LinkedBlockingQueue<String>()
     logToConsole(threadPool, logger)
 
     val processor =
@@ -122,22 +123,17 @@ fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
     })
 
 /**
- * Reading through the code, this is "noise."
- * It prints log messages in the background:
+ * Reading through the code, this is "noise":
+ * It prints log messages in the background.
  * A better strategy would use a logging facility.
  */
 private fun logToConsole(
     threadPool: ExecutorService,
-    logger: ConcurrentLinkedQueue<String>,
+    logger: BlockingQueue<String>,
 ) {
     threadPool.submit {
         while (!Thread.interrupted()) {
-            when (val logMessage = logger.poll()) {
-                null -> { /* Busy retry */
-                }
-
-                else -> println(logMessage)
-            }
+            println(logger.take())
         }
     }
 }
