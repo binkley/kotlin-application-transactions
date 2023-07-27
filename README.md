@@ -17,6 +17,12 @@ Python given suitable abstractions.
 This is also a good project to copy as a Kotlin starter following [modern JVM
 build practices](https://github.com/binkley/modern-java-practices).
 
+This project has no production dependencies other than
+[the JDK](https://docs.oracle.com/en/java/javase/17/docs/api/index.html) and
+Kotlin's [stdlib](https://kotlinlang.org/api/latest/jvm/stdlib/).
+Testing uses [JUnit](https://junit.org/junit5/) (test framework) and
+[Kotest](https://kotest.io/) (fluent assertions).
+
 ## Build and try
 
 To build, use `./mvnw clean verify`.

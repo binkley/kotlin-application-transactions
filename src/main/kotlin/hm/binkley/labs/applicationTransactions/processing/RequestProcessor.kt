@@ -41,8 +41,9 @@ class RequestProcessor(
         // The main loop processing client requests to the remote resource.
         // All other functions support this loop
         while (!Thread.interrupted()) {
-            // TODO: Nicer would be "take" instead of "poll", and block until
-            //  there is a request available
+            // TODO: BlockingQueue will wait for the first element to become
+            //  available, and is a cleaner choice: no busy waiting
+            //  This code uses plain Queue to improve clarity to the reader
             when (val request = requestQueue.poll()) {
                 null -> {
                     /* Do-nothing busy loop waiting for new requests */
