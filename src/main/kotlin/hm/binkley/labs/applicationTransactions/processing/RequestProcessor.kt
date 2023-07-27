@@ -224,32 +224,6 @@ class RequestProcessor(
         return pollForNextWorkUnit(id)
     }
 
-    /**
-     * Find the next request queue item that is:
-     * 1. A unit of work
-     * 2. Has [id] for that unit of work
-     * and removes that item from the queue
-     *
-     * @return the first matching request, or `null` if none found
-     */
-    private fun pollForNextWorkUnit(id: UUID): UnitOfWorkScope? {
-        // TODO: A nicer idiom like "takeIf" that blocks until it finds a
-        //  matching queue element,
-        //  and removes that element from the queue.
-        //  Existing idioms remove all elements matching a predicate, not
-        //  just the first one
-        val itr = requestQueue.iterator()
-        while (itr.hasNext()) {
-            val request = itr.next()
-            if (request is UnitOfWorkScope && id == request.id) {
-                itr.remove()
-                return request
-            }
-        }
-
-        return null
-    }
-
     private fun readersDidNotFinishInTime(request: RemoteQuery):
         FailureRemoteResult {
         logSlowReaders()
@@ -265,6 +239,19 @@ class RequestProcessor(
 
         request.result.complete(false)
     }
+
+    /**
+     * Find the next request queue item that is:
+     * 1. A unit of work
+     * 2. Has [id] for that unit of work
+     * and removes that item from the queue
+     *
+     * @return the first matching request, or `null` if none found
+     */
+    private fun pollForNextWorkUnit(id: UUID) =
+        requestQueue.removeFirstThat { request ->
+            request is UnitOfWorkScope && id == request.id
+        } as UnitOfWorkScope?
 
     /** @todo Logging */
     private fun logSlowReaders() {
@@ -287,6 +274,26 @@ class RequestProcessor(
             "TODO: Logging: SLOW WORK UNIT! -> last processed: $currentWork"
         )
     }
+}
+
+/**
+ * Remove the next element that matches [predicate].
+ *
+ * @return the first matching element, or `null` if none found
+ */
+private fun <T> MutableIterable<T>.removeFirstThat(
+    predicate: (T) -> Boolean
+): T? {
+    val itr = iterator()
+    while (itr.hasNext()) {
+        val element = itr.next()
+        if (predicate(element)) {
+            itr.remove()
+            return element
+        }
+    }
+
+    return null
 }
 
 private fun respondToClientWithBug(
