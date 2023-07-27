@@ -279,7 +279,9 @@ class RequestProcessor(
 
     /** @todo Logging */
     private fun logSlowUnitOfWork(currentWork: UnitOfWorkScope) {
-        logger.offer("TODO: Logging: SLOW WORK UNIT! -> $currentWork")
+        logger.offer(
+            "TODO: Logging: SLOW WORK UNIT! -> last processed: $currentWork"
+        )
     }
 }
 
