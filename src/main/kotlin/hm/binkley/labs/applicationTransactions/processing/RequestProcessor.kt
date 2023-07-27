@@ -233,13 +233,18 @@ class RequestProcessor(
      * @return the first matching request, or `null` if none found
      */
     private fun pollForNextWorkUnit(id: UUID): UnitOfWorkScope? {
+        // TODO: A nicer idiom like "takeIf" that blocks until it finds a
+        //  matching queue element,
+        //  and removes that element from the queue.
+        //  Existing idioms remove all elements matching a predicate, not
+        //  just the first one
         val itr = requestQueue.iterator()
         while (itr.hasNext()) {
             val request = itr.next()
-            if (request !is UnitOfWorkScope || id != request.id) continue
-
-            itr.remove()
-            return request
+            if (request is UnitOfWorkScope && id == request.id) {
+                itr.remove()
+                return request
+            }
         }
 
         return null
