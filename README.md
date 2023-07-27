@@ -95,7 +95,9 @@ abstractions that need translation into an actual distributed scenario:
 ### Minimally assumed abstractions
 
 - A searchable, concurrent-safe queue for submitting requests for remote
-  processing 
+  processing
+- The queue can block when looking for next element (alternative: add 
+  busy-retry)
 - A means for exclusive access to the remote resource
 - Callers and tests can wait on completion of submitted work
 
