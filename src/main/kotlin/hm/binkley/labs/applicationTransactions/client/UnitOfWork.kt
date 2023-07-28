@@ -11,6 +11,10 @@ import java.util.UUID.randomUUID
 /**
  * A unit of work is conceptually like a transaction.
  * Processing is exclusive of simple reads/writes, and of other units of work.
+ *
+ * The [UnitOfWork] is _stateful_.
+ * Internally, it tracks the current work unit # to provide consistency checking
+ * and better error messages.
  */
 class UnitOfWork(
     /**
