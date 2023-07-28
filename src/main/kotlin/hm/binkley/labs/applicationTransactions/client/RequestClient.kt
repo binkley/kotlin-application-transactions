@@ -8,57 +8,53 @@ import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.concurrent.BlockingQueue
 
-/**
- * Convenience class for sending requests to a single-threaded state machine.
- * The state machine controls access to a remote resource that does not support
- * transactions.
- */
+/** Convenience class for sending requests to the remote resource. */
 class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
     /**
-     * Send a single non-transactional read request to a remote resource.
+     * Sends a single simple read request to a remote resource.
      * Reads run in parallel.
      */
     fun readOne(query: String) = runRequest(OneRead(query))
 
     /**
-     * Send a single non-transactional, exclusive write request to a remote
-     * resource.
-     * Writes run serially.
+     * Sends a single simple, exclusive write request to a remote resource.
+     * Writes run serially and exclusive of other requests.
      */
     fun writeOne(query: String) = runRequest(OneWrite(query))
 
-    /** Starts an exclusive session with the remote resource. */
-    fun inExclusiveAccess(expectedUnits: Int) = ExclusiveAccess(expectedUnits)
+    /**
+     * Starts an exclusive session with the remote resource employing a
+     * [UnitOfWork].
+     * Exclusive sessions run serially and exclusive of other requests.
+     */
+    fun inExclusiveAccess(expectedUnits: Int): Transactionish<String, Unit> =
+        ExclusiveAccess(expectedUnits)
 
-    inner class ExclusiveAccess(expectedUnits: Int) :
+    private inner class ExclusiveAccess(expectedUnits: Int) :
         Transactionish<String, Unit> {
         private val uow = UnitOfWork(expectedUnits)
 
         /**
          * Sends a single read request to a remote resource.
-         * These may run in parallel with other outstanding read requests.
+         * These may run in parallel with other outstanding read requests,
+         * including those started prior to exclusive access.
          */
         override fun readOne(query: String) = runRequest(uow.readOne(query))
 
         /**
-         * Send a single exclusive write request to a remote resource in a
-         * transactional context.
-         * Writes run serially.
+         * Sends a single write request to a remote resource.
+         * Writes run serially and exclusive of other requests.
          */
         override fun writeOne(query: String) = runRequest(uow.writeOne(query))
 
-        /**
-         * Cancels the current transaction context.
-         * Other simple reads/writes or units of work may proceed afterward.
-         */
+        /** Cancels the current exclusive access to the remote resource. */
         override fun cancel() {
             requestQueue.offer(uow.cancel())
         }
 
         /**
-         * Aborts the current transaction context with instructions to the
-         * remote resource for undoing changes.
-         * Other simple reads/writes or units of work may proceed afterward.
+         * Aborts the current exclusive access to the remote resource with
+         * instructions for undoing changes.
          */
         override fun abort(undo: List<String>) {
             requestQueue.offer(uow.abort(undo))
@@ -78,5 +74,9 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
     }
 }
 
+/**
+ * @todo Unclear if calling users should use exceptions, or should drive
+ *       solely off the status code in the remote result
+ */
 private fun handleFailure(result: FailureRemoteResult): Nothing =
     error("TODO: Implement an exception scheme: $result")

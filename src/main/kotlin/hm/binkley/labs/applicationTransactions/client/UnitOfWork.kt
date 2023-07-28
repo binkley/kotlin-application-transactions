@@ -8,8 +8,23 @@ import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.UUID
 import java.util.UUID.randomUUID
 
-class UnitOfWork(val expectedUnits: Int) :
-    Transactionish<RemoteQuery, AbandonUnitOfWork> {
+/**
+ * A unit of work is conceptually like a transaction.
+ * Processing is exclusive of simple reads/writes, and of other units of work.
+ */
+class UnitOfWork(
+    /**
+     * Support autoclose-like semantics for a unit of work after all expected
+     * requests are encountered.
+     * This is also helpful for detecting usage bugs where caller should use
+     * [cancel] or [abort] to end a unit of work early.
+     *
+     * @todo Is this the best approach? Better might be to _require_ that
+     *       callers must use a "using" or "try-with-resources" idiom to
+     *       guarantee the unit of work is closed ("committed")
+     */
+    val expectedUnits: Int
+) : Transactionish<RemoteQuery, AbandonUnitOfWork> {
     val id: UUID = randomUUID()
 
     /** 1-based: pre-increment before use */
