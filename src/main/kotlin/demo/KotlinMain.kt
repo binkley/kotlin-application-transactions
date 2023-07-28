@@ -84,7 +84,7 @@ fun main() {
         var name = uow.readOne("READ NAME")
         println(name)
         if (!name.contains("READ NAME")) {
-            uow.cancel()
+            uow.cancelAndKeepChanges()
             return
         }
 
@@ -92,7 +92,10 @@ fun main() {
         name = uow.writeOne("SOMETHING FANCY WITH NAME")
         println(name)
         if (!name.contains("REMOTE")) {
-            uow.abort("SOME UNDO INSTRUCTION", "ANOTHER UNDO INSTRUCTION")
+            uow.cancelAndUndoChanges(
+                "SOME UNDO INSTRUCTION",
+                "ANOTHER UNDO INSTRUCTION"
+            )
             return
         }
     }

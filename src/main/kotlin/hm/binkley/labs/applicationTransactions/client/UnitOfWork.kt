@@ -21,7 +21,7 @@ class UnitOfWork(
      * Support autoclose-like semantics for a unit of work after all expected
      * requests are encountered.
      * This is also helpful for detecting usage bugs where caller should use
-     * [cancel] or [abort] to end a unit of work early.
+     * [cancelAndKeepChanges] or [cancelAndUndoChanges] to end a unit of work early.
      *
      * @todo Is this the best approach? Better might be to _require_ that
      *       callers must use a "using" or "try-with-resources" idiom to
@@ -37,7 +37,7 @@ class UnitOfWork(
     /**
      * Checks that this unit of work was completed by running all of the
      * [expectedUnits] work units, or that it was abandoned part way through
-     * ([cancel]/[abort]).
+     * ([cancelAndKeepChanges]/[cancelAndUndoChanges]).
      *
      * Note: there may be outstanding work in progress running against the
      * remote resource.
@@ -73,14 +73,14 @@ class UnitOfWork(
         return WriteWorkUnit(id, expectedUnits, thisUnit, query)
     }
 
-    override fun cancel(): AbandonUnitOfWork {
+    override fun cancelAndKeepChanges(): AbandonUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
         return AbandonUnitOfWork(id, expectedUnits)
     }
 
-    override fun abort(undo: List<String>): AbandonUnitOfWork {
+    override fun cancelAndUndoChanges(undo: List<String>): AbandonUnitOfWork {
         require(undo.isNotEmpty()) {
-            "Abort with no undo instructions. Did you mean cancel?" +
+            "No undo instructions. Did you mean cancelAndKeepChanges?" +
                 " (id: $id)"
         }
 
@@ -93,7 +93,8 @@ class UnitOfWork(
         error(
             "BUG: Fewer work units than expected:" +
                 " expected $expectedUnits; actual: $currentUnit." +
-                " Did you use cancel or abort as needed?" +
+                " Did you use cancelAndKeepChanges or cancelAndUndoChanges" +
+                " as needed?" +
                 " (id: $id)"
         )
     }

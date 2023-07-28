@@ -265,7 +265,7 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotHang(read)
 
-        val cancel = unitOfWork.cancel()
+        val cancel = unitOfWork.cancelAndKeepChanges()
         requestQueue.offer(cancel)
 
         ensureClientDoesNotHang(cancel) shouldBe true
@@ -281,7 +281,7 @@ internal class RequestProcessorTest {
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
         requestQueue.offer(read)
-        val abort = unitOfWork.abort("UNDO RENAME")
+        val abort = unitOfWork.cancelAndUndoChanges("UNDO RENAME")
         requestQueue.offer(abort)
 
         ensureClientDoesNotHang(read)
@@ -298,7 +298,7 @@ internal class RequestProcessorTest {
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
         requestQueue.offer(read)
-        val abort = unitOfWork.abort("BAD: ABCD PQRSTUV")
+        val abort = unitOfWork.cancelAndUndoChanges("BAD: ABCD PQRSTUV")
         requestQueue.offer(abort)
 
         ensureClientDoesNotHang(read)
@@ -439,7 +439,7 @@ internal class RequestProcessorTest {
         val unitOfWork = UnitOfWork(17)
         val read = unitOfWork.readOne("READ NAME")
         requestQueue.offer(read)
-        val abort = unitOfWork.abort("UNDO RENAME")
+        val abort = unitOfWork.cancelAndUndoChanges("UNDO RENAME")
         requestQueue.offer(abort)
 
         ensureClientDoesNotHang(read)

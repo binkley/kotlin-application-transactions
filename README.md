@@ -138,19 +138,22 @@ try {
     // Log or respond to caller
 }
 
-client.inExclusiveAccess(2 /* expected max calls */).use { txn ->
-    val status = txn.readOne("CHECK SOMETHING")
+client.inExclusiveAccess(2 /* expected max calls */).use { uow ->
+    val status = uow.readOne("CHECK SOMETHING")
     if ("OK" != status) {
-        txn.cancel() // Example of early return from transaction
+        // Example of early return from transaction
+        uow.cancelAndKeepChanges()
         return
     }
     
-    val result = txn.writeOne("CHANGE SOMETHING")
+    val result = uow.writeOne("CHANGE SOMETHING")
     if (result is FailRemoteResult) {
-        txn.abort("SOME UNDO INSTRUCTION") // Example of manual rollback
+        // Example of manual rollback
+        uow.cancelAndUndoChanges("SOME UNDO INSTRUCTION")
     }
     
-    // Transaction is automatically "closed" after 2 remote calls
+    // Unit work is automatically "closed" after 2 remote calls because of the
+    // "inExclusiveAccess" argument of 2
 }
 ```
 
@@ -164,10 +167,10 @@ threadPool.submit(
 )
 ```
 
-where specific to your language `requestQueue` is a thread-safe FIFO queue 
-that is searchable, `threadPool` is a facility for starting and managing 
+where specific to your language `requestQueue` is a thread-safe, blocking FIFO 
+queue that is searchable, `threadPool` is a facility for starting and managing 
 threads, and `remoteResource` represents calling the remote resource you 
-would like to provide transactions for.
+would like to protect against simultaneous writes or blocks work.
 
 ### Configuration
 

@@ -112,7 +112,7 @@ internal class RequestClientTest {
         val correctRequest = runFakeRequestProcessorForOperation(false)
 
         client.inExclusiveAccess(1).use { txn ->
-            txn.cancel()
+            txn.cancelAndKeepChanges()
         }
 
         correctRequest.get() shouldBe true
@@ -123,7 +123,7 @@ internal class RequestClientTest {
         val correctRequest = runFakeRequestProcessorForOperation(true)
 
         client.inExclusiveAccess(1).use { txn ->
-            txn.abort("RESET COLORS")
+            txn.cancelAndUndoChanges("RESET COLORS")
         }
 
         correctRequest.get() shouldBe true

@@ -16,25 +16,25 @@ interface Transactionish<QueryResult, OperationResult> : AutoCloseable {
     /**
      * Abandons the current exclusive access.
      * All previous remote operations have been auto-committed.
-     * If undo operations are needed (ie, to undo writes) use [abort].
-     *
-     * @param undo Multiple parameters of query instructions
+     * If undo operations are needed (ie, to undo writes) use
+     * [cancelAndUndoChanges].
      */
-    fun cancel(): OperationResult
+    fun cancelAndKeepChanges(): OperationResult
 
     /**
      * Abandons the current exclusive access.
      * All previous remote operations have been auto-committed.
      * Use to provide "undo" instructions in support of "all-or-none" semantics.
-     * If no undo operations (eg, after only reads) use [cancel].
+     * If no undo operations (eg, after only reads) use [cancelAndKeepChanges].
      *
      * @param undo Multiple parameters of query instructions
      */
-    fun abort(undo: List<String>): OperationResult
+    fun cancelAndUndoChanges(undo: List<String>): OperationResult
 
     /**
-     * Convenience for [abort] with multiple parameters of undo instructions
+     * Convenience for [cancelAndUndoChanges] with multiple parameters of undo instructions
      * rather than just a list.
      */
-    fun abort(vararg undo: String) = abort(undo.asList())
+    fun cancelAndUndoChanges(vararg undo: String) =
+        cancelAndUndoChanges(undo.asList())
 }

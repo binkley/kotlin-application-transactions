@@ -41,7 +41,7 @@ class UnitOfWorkTest {
 
     @Test
     fun `should cancel (abandon) the unit of work`() {
-        val rollback = unitOfWork.cancel()
+        val rollback = unitOfWork.cancelAndKeepChanges()
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
@@ -54,7 +54,8 @@ class UnitOfWorkTest {
 
     @Test
     fun `should abort (abandon) the unit of work with a list`() {
-        val rollback = unitOfWork.abort(listOf("UNDO MY CHANGES"))
+        val rollback =
+            unitOfWork.cancelAndUndoChanges(listOf("UNDO MY CHANGES"))
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
@@ -67,7 +68,7 @@ class UnitOfWorkTest {
 
     @Test
     fun `should abort (abandon) the unit of work with varargs`() {
-        val rollback = unitOfWork.abort("UNDO MY CHANGES")
+        val rollback = unitOfWork.cancelAndUndoChanges("UNDO MY CHANGES")
 
         rollback should beInstanceOf<AbandonUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
@@ -119,7 +120,7 @@ class UnitOfWorkTest {
     @Test
     fun `should throw a bug if abort with no undo instructions`() {
         shouldThrow<IllegalArgumentException> {
-            unitOfWork.abort(emptyList())
+            unitOfWork.cancelAndUndoChanges(emptyList())
         }
     }
 }

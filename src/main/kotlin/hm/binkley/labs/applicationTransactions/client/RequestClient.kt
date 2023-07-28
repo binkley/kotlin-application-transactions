@@ -48,16 +48,16 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
         override fun writeOne(query: String) = runRequest(uow.writeOne(query))
 
         /** Cancels the current exclusive access to the remote resource. */
-        override fun cancel() {
-            requestQueue.offer(uow.cancel())
+        override fun cancelAndKeepChanges() {
+            requestQueue.offer(uow.cancelAndKeepChanges())
         }
 
         /**
          * Aborts the current exclusive access to the remote resource with
          * instructions for undoing changes.
          */
-        override fun abort(undo: List<String>) {
-            requestQueue.offer(uow.abort(undo))
+        override fun cancelAndUndoChanges(undo: List<String>) {
+            requestQueue.offer(uow.cancelAndUndoChanges(undo))
         }
 
         override fun close() = uow.close()
