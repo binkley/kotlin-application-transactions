@@ -27,13 +27,13 @@ interface Transactionish<QueryResult, OperationResult> : AutoCloseable {
      * Use to provide "undo" instructions in support of "all-or-none" semantics.
      * If no undo operations (eg, after only reads) use [cancelAndKeepChanges].
      *
-     * @param undo Multiple parameters of query instructions
+     * @param undo A list of undo instructions
      */
     fun cancelAndUndoChanges(undo: List<String>): OperationResult
 
     /**
-     * Convenience for [cancelAndUndoChanges] with multiple parameters of undo instructions
-     * rather than just a list.
+     * Convenience for [cancelAndUndoChanges] with multiple parameters of undo
+     * instructions rather than just a list.
      */
     fun cancelAndUndoChanges(vararg undo: String) =
         cancelAndUndoChanges(undo.asList())
