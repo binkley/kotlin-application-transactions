@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.processing
 
-import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
@@ -337,7 +337,7 @@ internal class RequestProcessorTest {
         val unitOfWork = UnitOfWork(expectedUnits)
         requestQueue.offer(unitOfWork.writeOne("CHANGE NAME"))
 
-        val badAbandon = AbandonUnitOfWork(
+        val badAbandon = CancelUnitOfWork(
             unitOfWork.id,
             expectedUnits - 1, // What the test really checks
         )
@@ -536,6 +536,6 @@ internal class RequestProcessorTest {
     }
 
     /** @return [Boolean] */
-    private fun ensureClientDoesNotHang(request: AbandonUnitOfWork) =
+    private fun ensureClientDoesNotHang(request: CancelUnitOfWork) =
         request.result.get()
 }

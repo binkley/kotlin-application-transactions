@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.processing
 
-import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
 import hm.binkley.labs.applicationTransactions.OneWrite
@@ -56,7 +56,7 @@ class RequestProcessor(
 
                 is OneWrite -> runSerialForWrites(request)
 
-                is AbandonUnitOfWork, is ReadWorkUnit, is WriteWorkUnit ->
+                is CancelUnitOfWork, is ReadWorkUnit, is WriteWorkUnit ->
                     runExclusiveForUnitOfWork(request as UnitOfWorkScope)
             }
         }
@@ -89,7 +89,7 @@ class RequestProcessor(
             }
 
             when (currentWork) {
-                is AbandonUnitOfWork -> {
+                is CancelUnitOfWork -> {
                     runSerialForRollback(currentWork)
 
                     return
@@ -169,7 +169,7 @@ class RequestProcessor(
         // Check caller is on the same page
         var isGood = startWork.expectedUnits == currentWork.expectedUnits
         when (currentWork) {
-            is AbandonUnitOfWork -> if (!isGood) {
+            is CancelUnitOfWork -> if (!isGood) {
                 logBadWorkUnit(currentWork)
 
                 currentWork.result.complete(false)
@@ -197,7 +197,7 @@ class RequestProcessor(
      * If timing out waiting for readers to complete, does not execute the
      * undo instructions.
      */
-    private fun runSerialForRollback(request: AbandonUnitOfWork) {
+    private fun runSerialForRollback(request: CancelUnitOfWork) {
         if (!waitForReadersToComplete()) {
             return readersDidNotFinishInTime(request)
         }
@@ -234,7 +234,7 @@ class RequestProcessor(
         return result
     }
 
-    private fun readersDidNotFinishInTime(request: AbandonUnitOfWork) {
+    private fun readersDidNotFinishInTime(request: CancelUnitOfWork) {
         logSlowReaders()
 
         request.result.complete(false)

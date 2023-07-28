@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
@@ -166,7 +166,7 @@ internal class RequestClientTest {
                 // More explicit here to help translation into other languages
                 val request = requestQueue.poll()
                 if (null == request) continue
-                if (request is AbandonUnitOfWork) {
+                if (request is CancelUnitOfWork) {
                     correctRequest.complete(
                         request.undo.isNotEmpty() == hasUndoInstruction
                     )

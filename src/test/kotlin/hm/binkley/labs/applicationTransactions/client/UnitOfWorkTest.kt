@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.RemoteResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.should
@@ -43,7 +43,7 @@ class UnitOfWorkTest {
     fun `should cancel (abandon) the unit of work`() {
         val rollback = unitOfWork.cancelAndKeepChanges()
 
-        rollback should beInstanceOf<AbandonUnitOfWork>()
+        rollback should beInstanceOf<CancelUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
         rollback.expectedUnits shouldBe unitOfWork.expectedUnits
         // Abandon with intent jumps to the last unit so that "close" can detect
@@ -57,7 +57,7 @@ class UnitOfWorkTest {
         val rollback =
             unitOfWork.cancelAndUndoChanges(listOf("UNDO MY CHANGES"))
 
-        rollback should beInstanceOf<AbandonUnitOfWork>()
+        rollback should beInstanceOf<CancelUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
         rollback.expectedUnits shouldBe unitOfWork.expectedUnits
         // Abandon with intent jumps to the last unit so that "close" can detect
@@ -70,7 +70,7 @@ class UnitOfWorkTest {
     fun `should abort (abandon) the unit of work with varargs`() {
         val rollback = unitOfWork.cancelAndUndoChanges("UNDO MY CHANGES")
 
-        rollback should beInstanceOf<AbandonUnitOfWork>()
+        rollback should beInstanceOf<CancelUnitOfWork>()
         rollback.id shouldBe unitOfWork.id
         rollback.expectedUnits shouldBe unitOfWork.expectedUnits
         // Abandon with intent jumps to the last unit so that "close" can detect

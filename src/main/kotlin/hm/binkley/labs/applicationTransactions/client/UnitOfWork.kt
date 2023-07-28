@@ -1,6 +1,6 @@
 package hm.binkley.labs.applicationTransactions.client
 
-import hm.binkley.labs.applicationTransactions.AbandonUnitOfWork
+import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
@@ -28,7 +28,7 @@ class UnitOfWork(
      *       guarantee the unit of work is closed ("committed")
      */
     val expectedUnits: Int
-) : Transactionish<RemoteQuery, AbandonUnitOfWork> {
+) : Transactionish<RemoteQuery, CancelUnitOfWork> {
     val id: UUID = randomUUID()
 
     /** 1-based: pre-increment before use */
@@ -73,19 +73,19 @@ class UnitOfWork(
         return WriteWorkUnit(id, expectedUnits, thisUnit, query)
     }
 
-    override fun cancelAndKeepChanges(): AbandonUnitOfWork {
+    override fun cancelAndKeepChanges(): CancelUnitOfWork {
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id, expectedUnits)
+        return CancelUnitOfWork(id, expectedUnits)
     }
 
-    override fun cancelAndUndoChanges(undo: List<String>): AbandonUnitOfWork {
+    override fun cancelAndUndoChanges(undo: List<String>): CancelUnitOfWork {
         require(undo.isNotEmpty()) {
             "No undo instructions. Did you mean cancelAndKeepChanges?" +
                 " (id: $id)"
         }
 
         currentUnit = expectedUnits // Help `close` find bugs
-        return AbandonUnitOfWork(id, expectedUnits, undo)
+        return CancelUnitOfWork(id, expectedUnits, undo)
     }
 
     override fun close() {
