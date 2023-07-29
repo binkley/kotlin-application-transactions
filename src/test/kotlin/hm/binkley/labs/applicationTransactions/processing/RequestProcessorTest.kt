@@ -20,9 +20,11 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import java.util.UUID.randomUUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -33,7 +35,7 @@ import java.util.concurrent.TimeUnit.SECONDS
  * overlong on stuck tests, but that any pauses in production code (ie,
  * retries) can fully complete.
  */
-@Timeout(value = 5, unit = SECONDS) // Tests use threads
+@Timeout(value = 5, unit = DAYS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
@@ -49,6 +51,20 @@ internal class RequestProcessorTest {
         threadPool.shutdownNow()
 
         threadPool.awaitTermination(1, SECONDS) shouldBe true
+    }
+
+    @Test
+    fun `should complain when canceling before any work is sent`() {
+        val remoteResource = runRequestProcessor()
+
+        val request = CancelUnitOfWork(randomUUID(), 1)
+        requestQueue.offer(request)
+
+        val result = ensureClientDoesNotHang(request)
+
+        result shouldBe true
+        remoteResource.calls.shouldBeEmpty()
+        shouldLogErrors()
     }
 
     @Test

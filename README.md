@@ -172,7 +172,14 @@ queue that is searchable, `threadPool` is a facility for starting and managing
 threads, and `remoteResource` represents calling the remote resource you 
 would like to protect against simultaneous writes or blocks work.
 
-### Configuration
+### Tips
+
+The request processor should send results to the blocking client call before 
+submitting asynchronous logging.
+Tests (and caller) can then rely on that operations are complete&mdash;success 
+or failure&mdash;before logging happens.
+
+## Configuration
 
 There are only two knobs for tweaking behavior:
 

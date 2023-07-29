@@ -56,7 +56,10 @@ class RequestProcessor(
 
                 is OneWrite -> runSerialForWrites(request)
 
-                is CancelUnitOfWork, is ReadWorkUnit, is WriteWorkUnit ->
+                // Canceling a unit of work before any reads/writes sent
+                is CancelUnitOfWork -> cancelUnitOfWorkWithoutWork(request)
+
+                is ReadWorkUnit, is WriteWorkUnit ->
                     runExclusiveForUnitOfWork(request as UnitOfWorkScope)
             }
         }
@@ -76,6 +79,11 @@ class RequestProcessor(
         } else {
             respondToClient(request)
         }
+
+    private fun cancelUnitOfWorkWithoutWork(request: CancelUnitOfWork) {
+        logBadWorkUnit(request)
+        request.result.complete(true)
+    }
 
     private fun runExclusiveForUnitOfWork(startWork: UnitOfWorkScope) {
         var currentWork = startWork
