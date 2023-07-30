@@ -24,7 +24,6 @@ import java.util.UUID.randomUUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -32,10 +31,10 @@ import java.util.concurrent.TimeUnit.SECONDS
  * Not typical unit test style; threads are challenging.
  *
  * The [Timeout] choice of 5 seconds ensures that developers do not wait
- * overlong on stuck tests, but that any pauses in production code (ie,
+ * overlong on stuck tests, but that any pauses in production code (i.e.,
  * retries) can fully complete.
  */
-@Timeout(value = 5, unit = DAYS) // Tests use threads
+@Timeout(value = 5, unit = SECONDS) // Tests use threads
 internal class RequestProcessorTest {
     private val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     private val threadPool = newCachedThreadPool()
@@ -231,10 +230,10 @@ internal class RequestProcessorTest {
 
     /**
      * Ordering is important:
-     * 1. Start UoW A with a read
-     * 2. Start UoW B with a read
-     * 3. A proceeds with a write
-     * 4. B waits for A to complete
+     * 1. Start UoW "A" with a read
+     * 2. Start UoW "B" with a read
+     * 3. "A" proceeds with a write
+     * 4. "B" waits for "A" to complete
      * Without units of work, these would interleave, and the reads would run
      * in parallel.
      */

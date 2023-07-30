@@ -108,7 +108,7 @@ internal class RequestClientTest {
     }
 
     @Test
-    fun `should cancel in a transaction`() {
+    fun `should cancel a unit of work`() {
         val correctRequest = runFakeRequestProcessorForOperation(false)
 
         client.inExclusiveAccess(1).use { txn ->
@@ -119,7 +119,7 @@ internal class RequestClientTest {
     }
 
     @Test
-    fun `should abort in a transaction`() {
+    fun `should cancel a unit of work with undo instructions`() {
         val correctRequest = runFakeRequestProcessorForOperation(true)
 
         client.inExclusiveAccess(1).use { txn ->
@@ -134,10 +134,7 @@ internal class RequestClientTest {
         responseForSuccess: String = "",
     ) = threadPool.submit {
         while (!Thread.interrupted()) {
-            // Native Kotlin: request = requestQueue.poll() ?: continue
-            // More explicit here to help translation into other languages
-            val request = requestQueue.poll()
-            if (null == request) continue
+            val request = requestQueue.take()
             val remoteQuery = request as RemoteQuery
             val result = if (succeedOrFail) {
                 SuccessRemoteResult(
@@ -162,13 +159,10 @@ internal class RequestClientTest {
         val correctRequest = CompletableFuture<Boolean>()
         threadPool.submit {
             while (!Thread.interrupted()) {
-                // Native Kotlin: request = requestQueue.poll() ?: continue
-                // More explicit here to help translation into other languages
-                val request = requestQueue.poll()
-                if (null == request) continue
-                if (request is CancelUnitOfWork) {
+                val offeredRequest = requestQueue.take()
+                if (offeredRequest is CancelUnitOfWork) {
                     correctRequest.complete(
-                        request.undo.isNotEmpty() == hasUndoInstruction
+                        offeredRequest.undo.isNotEmpty() == hasUndoInstruction
                     )
                 } else {
                     correctRequest.complete(false)
