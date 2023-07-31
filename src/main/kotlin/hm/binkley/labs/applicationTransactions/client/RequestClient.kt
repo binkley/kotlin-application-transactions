@@ -60,6 +60,7 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
             requestQueue.offer(uow.cancelAndUndoChanges(undo))
         }
 
+        /** @todo Consider automatically sending a cancel request */
         override fun close() = uow.close()
     }
 
