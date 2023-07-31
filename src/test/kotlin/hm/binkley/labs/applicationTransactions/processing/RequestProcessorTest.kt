@@ -286,8 +286,10 @@ internal class RequestProcessorTest {
         ensureClientDoesNotHang(cancel) shouldBe true
 
         remoteResource.calls shouldBe listOf("FAVORITE COLOR")
-        unitOfWork.completed shouldBe true // false without cancel
+        unitOfWork.completed shouldBe true
     }
+
+    // TODO: Test sending cancel when there has been no previous requests
 
     @Test
     fun `should abort unit of work with undo instructions`() {
@@ -303,7 +305,7 @@ internal class RequestProcessorTest {
         ensureClientDoesNotHang(abort) shouldBe true
 
         remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
-        unitOfWork.completed shouldBe true // false without cancel
+        unitOfWork.completed shouldBe true
     }
 
     @Test
