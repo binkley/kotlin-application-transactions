@@ -115,6 +115,30 @@ The implementation is a simple state machine based on the type of request:
   remote requests in the unit of work run in serial [^1].
   Units of work are exclusive and never overlap
 
+It looks like:
+
+```mermaid
+graph TD
+  subgraph Service [This code as part of a single instance]
+    Exception[\"An exception hierarchy"\]
+    Caller("Calling remote resource from<br>business logic")
+    Client(["DSL class<br>to simplify calling code<br>with blocking calls<br>and simple returns"])
+    RQ[["Request queue keeping<br>client calls in sequence"]]
+    P(["Request processor managing<br>state with the remote resource"])
+  end
+  R(("Remote resource"))
+
+  Client ===>|"sad paths<br>after processor provides result"| Exception
+  Client ==>|"returns results<br>or throws exceptions"| Caller
+  P -->|"responses including<br>status code and response body"| Client
+  R -.->|"responses including<br>status code and response body"| P
+  P -->|"handle retry to<br>remote resource"| P
+  P -.->|"call remote resource ensuring<br>writes and UoWs do not overlap"| R
+  RQ -->|"has requests for"| P
+  Client -->|"sends requests<br>for remote resource"| RQ
+  Caller ==>|"uses simple functions<br>and blocks on calls to complete"| Client
+```
+
 [^1]: There is a slight optimization that the first reads of a unit of work can
 run in parallel with existing simple reads until a write request is encountered
 
