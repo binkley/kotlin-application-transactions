@@ -122,21 +122,22 @@ graph TD
   subgraph Service [This code as part of a single instance]
     Exception[\"An exception hierarchy"\]
     Caller("Calling remote resource from<br>business logic")
-    Client(["DSL class<br>to simplify calling code<br>with blocking calls<br>and simple returns"])
+    Client(["Remote client DSL<br>to simplify calling code<br>with blocking calls<br>and simple returns"])
     RQ[["Request queue keeping<br>client calls in sequence"]]
-    P(["Request processor managing<br>state with the remote resource"])
+    P(["Request processor<br>managing state with<br>the remote resource"])
   end
-  R(("Remote resource"))
+  R(("Remote<br>resource"))
 
-  Client ===>|"sad paths<br>after processor provides result"| Exception
+  Client ===>|"throws exceptions<br>for failures"| Exception
   Client ==>|"returns results<br>or throws exceptions"| Caller
   P -->|"responses including<br>status code and response body"| Client
   R -.->|"responses including<br>status code and response body"| P
-  P -->|"handle retry to<br>remote resource"| P
+  P -->|"retries calls to<br>remote resource"| P
   P -.->|"call remote resource ensuring<br>writes and UoWs do not overlap"| R
+  P -->|"blocks pulling new requests from"| RQ
   RQ -->|"has requests for"| P
-  Client -->|"sends requests<br>for remote resource"| RQ
-  Caller ==>|"uses simple functions<br>and blocks on calls to complete"| Client
+  Client -->|"submits requests<br>for remote resource<br>(FIFO order)"| RQ
+  Caller ==>|"uses simple<br>functions and exceptions<br>and blocking calls"| Client
 ```
 
 [^1]: There is a slight optimization that the first reads of a unit of work can
