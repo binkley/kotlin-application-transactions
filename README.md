@@ -131,9 +131,9 @@ graph TD
   Client ===>|"throws exceptions<br>for failures"| Exception
   Client ==>|"returns results<br>or throws exceptions"| Caller
   P -->|"responses including<br>status code and response body"| Client
-  R -.->|"responses including<br>status code and response body"| P
+  R -.->|"responses including<br>status code and<br>response body"| P
   P -->|"retries calls to<br>remote resource"| P
-  P -.->|"call remote resource ensuring<br>writes and UoWs do not overlap"| R
+  P -.->|"call remote resource<br>ensuring writes and UoWs<br>do not overlap"| R
   P -->|"blocks pulling new requests from"| RQ
   RQ -->|"has requests for"| P
   Client -->|"submits requests<br>for remote resource<br>(FIFO order)"| RQ
