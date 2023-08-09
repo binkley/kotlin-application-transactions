@@ -40,7 +40,7 @@ internal class RequestClientTest {
     fun `should fail at one read`() {
         runFakeRequestProcessorForQuery(false)
 
-        shouldThrow<IllegalStateException> {
+        shouldThrow<ExampleFrameworkException> {
             client.readOne("WHAT IS YOUR FAVORITE COLOR?")
         }
     }
@@ -58,7 +58,7 @@ internal class RequestClientTest {
     fun `should fail at one write`() {
         runFakeRequestProcessorForQuery(false)
 
-        shouldThrow<IllegalStateException> {
+        shouldThrow<ExampleFrameworkException> {
             client.writeOne("CHANGE COLORS")
         }
     }
@@ -79,7 +79,7 @@ internal class RequestClientTest {
         runFakeRequestProcessorForQuery(false)
 
         client.inExclusiveAccess(1).use { uow ->
-            shouldThrow<IllegalStateException> {
+            shouldThrow<ExampleFrameworkException> {
                 uow.readOne("WHAT IS YOUR FAVORITE COLOR?")
             }
         }
@@ -101,7 +101,7 @@ internal class RequestClientTest {
         runFakeRequestProcessorForQuery(false)
 
         client.inExclusiveAccess(1).use { uow ->
-            shouldThrow<IllegalStateException> {
+            shouldThrow<ExampleFrameworkException> {
                 uow.writeOne("CHANGE COLORS")
             }
         }

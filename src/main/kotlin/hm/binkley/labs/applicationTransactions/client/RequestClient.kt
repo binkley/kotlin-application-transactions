@@ -70,14 +70,11 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
         requestQueue.offer(request)
         return when (val result = request.result.get()) { // Blocking
             is SuccessRemoteResult -> result.response
-            is FailureRemoteResult -> handleFailure(result)
+            is FailureRemoteResult -> throw ExampleFrameworkException(
+                result.status,
+                result.query,
+                result.errorMessage
+            )
         }
     }
 }
-
-/**
- * @todo Unclear if calling users should use exceptions, or should drive
- *       solely off the status code in the remote result
- */
-private fun handleFailure(result: FailureRemoteResult): Nothing =
-    error("TODO: Implement an exception scheme: $result")
