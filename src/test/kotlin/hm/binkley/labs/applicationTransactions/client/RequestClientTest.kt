@@ -6,13 +6,13 @@ import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors.newSingleThreadExecutor
-import java.util.concurrent.Future
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -67,8 +67,8 @@ internal class RequestClientTest {
     fun `should succeed at one read in a transaction`() {
         runFakeRequestProcessorForQuery(true, "GREEN")
 
-        val response = client.inExclusiveAccess(1).use { txn ->
-            txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
+        val response = client.inExclusiveAccess(1).use { uow ->
+            uow.readOne("WHAT IS YOUR FAVORITE COLOR?")
         }
 
         response shouldBe "GREEN"
@@ -78,9 +78,9 @@ internal class RequestClientTest {
     fun `should fail at one read in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
-        client.inExclusiveAccess(1).use { txn ->
+        client.inExclusiveAccess(1).use { uow ->
             shouldThrow<IllegalStateException> {
-                txn.readOne("WHAT IS YOUR FAVORITE COLOR?")
+                uow.readOne("WHAT IS YOUR FAVORITE COLOR?")
             }
         }
     }
@@ -89,8 +89,8 @@ internal class RequestClientTest {
     fun `should succeed at one write in a transaction`() {
         runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
 
-        val response = client.inExclusiveAccess(1).use { txn ->
-            txn.writeOne("CHANGE COLORS")
+        val response = client.inExclusiveAccess(1).use { uow ->
+            uow.writeOne("CHANGE COLORS")
         }
 
         response shouldBe "BLUE IS THE NEW GREEN"
@@ -100,33 +100,35 @@ internal class RequestClientTest {
     fun `should fail at one write in a transaction`() {
         runFakeRequestProcessorForQuery(false)
 
-        client.inExclusiveAccess(1).use { txn ->
+        client.inExclusiveAccess(1).use { uow ->
             shouldThrow<IllegalStateException> {
-                txn.writeOne("CHANGE COLORS")
+                uow.writeOne("CHANGE COLORS")
             }
         }
     }
 
     @Test
     fun `should cancel a unit of work`() {
-        val correctRequest = runFakeRequestProcessorForOperation(false)
+        client.inExclusiveAccess(1).use { uow ->
+            uow.cancelAndKeepChanges()
 
-        client.inExclusiveAccess(1).use { txn ->
-            txn.cancelAndKeepChanges()
+            val request = requestQueue.take()
+
+            request.shouldBeInstanceOf<CancelUnitOfWork>()
+            request.undo.shouldBeEmpty()
         }
-
-        correctRequest.get() shouldBe true
     }
 
     @Test
     fun `should cancel a unit of work with undo instructions`() {
-        val correctRequest = runFakeRequestProcessorForOperation(true)
+        client.inExclusiveAccess(1).use { uow ->
+            uow.cancelAndUndoChanges("RESET COLORS")
 
-        client.inExclusiveAccess(1).use { txn ->
-            txn.cancelAndUndoChanges("RESET COLORS")
+            val request = requestQueue.take()
+
+            request.shouldBeInstanceOf<CancelUnitOfWork>()
+            request.undo shouldBe listOf("RESET COLORS")
         }
-
-        correctRequest.get() shouldBe true
     }
 
     private fun runFakeRequestProcessorForQuery(
@@ -151,25 +153,5 @@ internal class RequestClientTest {
             }
             remoteQuery.result.complete(result)
         }
-    }
-
-    private fun runFakeRequestProcessorForOperation(
-        hasUndoInstruction: Boolean,
-    ): Future<Boolean> {
-        val correctRequest = CompletableFuture<Boolean>()
-        threadPool.submit {
-            while (!Thread.interrupted()) {
-                val offeredRequest = requestQueue.take()
-                if (offeredRequest is CancelUnitOfWork) {
-                    correctRequest.complete(
-                        offeredRequest.undo.isNotEmpty() == hasUndoInstruction
-                    )
-                } else {
-                    correctRequest.complete(false)
-                }
-                break
-            }
-        }
-        return correctRequest
     }
 }

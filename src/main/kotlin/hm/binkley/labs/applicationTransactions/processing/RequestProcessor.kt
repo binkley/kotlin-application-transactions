@@ -42,10 +42,6 @@ class RequestProcessor(
         // The main loop processing client requests to the remote resource.
         // All other functions support this loop
         while (!Thread.interrupted()) {
-            // TODO: BlockingQueue will wait for the first element to become
-            //  available, and is a cleaner choice: no busy waiting
-            //  A plain Queue would be easier for the human code reviewer to
-            //  understand, but entails a busy-retry loop
             when (val request = requestQueue.take()) {
                 is OneRead -> runParallelForReads(request)
 
