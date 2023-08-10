@@ -3,7 +3,7 @@ package hm.binkley.labs.applicationTransactions.client
 /** A sample exception type. */
 class ExampleFrameworkException(
     /** The remote failure status code, or `0` if an internal failure. */
-    val status: Int = 0,
+    val status: Int,
     /** The remote query, or `null` if an internal failure. */
     val query: String? = null,
     val errorMessage: String? = null,
