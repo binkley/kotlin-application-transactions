@@ -6,17 +6,17 @@ class ExampleFrameworkException(
     val status: Int = 0,
     /** The remote query, or `null` if an internal failure. */
     val query: String? = null,
-    errorMessage: String,
+    val errorMessage: String? = null,
 ) : Exception(exceptionMessage(status, query, errorMessage))
 
 private fun exceptionMessage(
     status: Int,
     query: String?,
-    errorMessage: String
+    errorMessage: String?
 ): String {
-    val message = StringBuilder(errorMessage)
+    val message = StringBuilder(errorMessage ?: "Unsure what happened")
+    message.append("; remote status code: $status")
 
-    if (0 != status) message.append("; remote status code: $status")
     if (null != query) message.append("; remote query: $query")
 
     return message.toString()

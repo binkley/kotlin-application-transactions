@@ -59,7 +59,7 @@ internal class RequestProcessorTest {
         val request = CancelUnitOfWork(randomUUID(), 1)
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         result shouldBe true
         remoteResource.calls.shouldBeEmpty()
@@ -73,7 +73,7 @@ internal class RequestProcessorTest {
         val request = OneRead("BAD: ABCD PQRSTUV")
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         result should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls shouldBe listOf("BAD: ABCD PQRSTUV")
@@ -87,7 +87,7 @@ internal class RequestProcessorTest {
         val request = OneRead("READ NAME")
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
@@ -100,7 +100,7 @@ internal class RequestProcessorTest {
         val request = OneWrite("WRITE NAME")
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
@@ -116,7 +116,7 @@ internal class RequestProcessorTest {
         val write = OneWrite("WRITE NAME")
         requestQueue.offer(write)
 
-        ensureClientDoesNotHang(read, write)
+        ensureClientDoesNotBlock(read, write)
 
         remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
     }
@@ -129,7 +129,7 @@ internal class RequestProcessorTest {
         val request = unitOfWork.readOne("READ NAME")
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
@@ -157,7 +157,7 @@ internal class RequestProcessorTest {
         val request = unitOfWork.writeOne("WRITE NAME")
         requestQueue.offer(request)
 
-        val result = ensureClientDoesNotHang(request)
+        val result = ensureClientDoesNotBlock(request)
 
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
         remoteResource.calls shouldBe listOf("WRITE NAME")
@@ -175,7 +175,7 @@ internal class RequestProcessorTest {
         val simpleRead = OneRead("READ NAME")
         requestQueue.offer(simpleRead)
 
-        ensureClientDoesNotHang(workUnitWrite, simpleRead)
+        ensureClientDoesNotBlock(workUnitWrite, simpleRead)
 
         remoteResource.calls shouldBe listOf("BAD THING", "READ NAME")
         unitOfWork.completed shouldBe false
@@ -197,7 +197,7 @@ internal class RequestProcessorTest {
         // the simple read can progress
         SECONDS.sleep(1)
 
-        ensureClientDoesNotHang(workUnit, pending)
+        ensureClientDoesNotBlock(workUnit, pending)
 
         remoteResource.calls shouldBe listOf("WRITE NAME", "FAVORITE COLOR")
         unitOfWork.completed shouldBe false
@@ -218,7 +218,7 @@ internal class RequestProcessorTest {
         val readWorkUnit = unitOfWork.readOne("READ NAME")
         requestQueue.offer(readWorkUnit)
 
-        ensureClientDoesNotHang(writeWorkUnit, readWorkUnit, interleaved)
+        ensureClientDoesNotBlock(writeWorkUnit, readWorkUnit, interleaved)
 
         remoteResource.calls shouldBe listOf(
             "WRITE NAME",
@@ -252,7 +252,7 @@ internal class RequestProcessorTest {
         val writeWorkUnitA = unitOfWorkA.writeOne("[A] WRITE NAME")
         requestQueue.offer(writeWorkUnitA)
 
-        ensureClientDoesNotHang(
+        ensureClientDoesNotBlock(
             readWorkUnitA,
             writeWorkUnitA,
             readWorkUnitB,
@@ -278,12 +278,12 @@ internal class RequestProcessorTest {
         val read = unitOfWork.readOne("FAVORITE COLOR")
         requestQueue.offer(read)
 
-        ensureClientDoesNotHang(read)
+        ensureClientDoesNotBlock(read)
 
         val cancel = unitOfWork.cancelAndKeepChanges()
         requestQueue.offer(cancel)
 
-        ensureClientDoesNotHang(cancel) shouldBe true
+        ensureClientDoesNotBlock(cancel) shouldBe true
 
         remoteResource.calls shouldBe listOf("FAVORITE COLOR")
         unitOfWork.completed shouldBe true
@@ -301,8 +301,8 @@ internal class RequestProcessorTest {
         val abort = unitOfWork.cancelAndUndoChanges("UNDO RENAME")
         requestQueue.offer(abort)
 
-        ensureClientDoesNotHang(read)
-        ensureClientDoesNotHang(abort) shouldBe true
+        ensureClientDoesNotBlock(read)
+        ensureClientDoesNotBlock(abort) shouldBe true
 
         remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
         unitOfWork.completed shouldBe true
@@ -318,8 +318,8 @@ internal class RequestProcessorTest {
         val abort = unitOfWork.cancelAndUndoChanges("BAD: ABCD PQRSTUV")
         requestQueue.offer(abort)
 
-        ensureClientDoesNotHang(read)
-        ensureClientDoesNotHang(abort) shouldBe false // Undo failed
+        ensureClientDoesNotBlock(read)
+        ensureClientDoesNotBlock(abort) shouldBe false // Undo failed
 
         remoteResource.calls shouldBe listOf("READ NAME", "BAD: ABCD PQRSTUV")
         unitOfWork.completed shouldBe true
@@ -339,9 +339,9 @@ internal class RequestProcessorTest {
         )
         requestQueue.offer(martian)
 
-        val martialResult = ensureClientDoesNotHang(martian)
+        val martianResult = ensureClientDoesNotBlock(martian)
 
-        martialResult should beInstanceOf<FailureRemoteResult>()
+        martianResult should beInstanceOf<FailureRemoteResult>()
         remoteResource.calls.shouldBeEmpty()
         shouldLogErrors()
     }
@@ -360,7 +360,7 @@ internal class RequestProcessorTest {
         )
         requestQueue.offer(badAbandon)
 
-        ensureClientDoesNotHang(badAbandon) shouldBe false
+        ensureClientDoesNotBlock(badAbandon) shouldBe false
 
         unitOfWork.completed shouldBe false
         shouldLogErrors()
@@ -381,7 +381,7 @@ internal class RequestProcessorTest {
         )
         requestQueue.offer(badQuery)
 
-        ensureClientDoesNotHang(badQuery) should
+        ensureClientDoesNotBlock(badQuery) should
             beInstanceOf<FailureRemoteResult>()
 
         unitOfWork.completed shouldBe false
@@ -403,7 +403,7 @@ internal class RequestProcessorTest {
         )
         requestQueue.offer(badQuery)
 
-        ensureClientDoesNotHang(badQuery) should
+        ensureClientDoesNotBlock(badQuery) should
             beInstanceOf<FailureRemoteResult>()
 
         unitOfWork.completed shouldBe false
@@ -423,7 +423,7 @@ internal class RequestProcessorTest {
         )
         requestQueue.offer(martian)
 
-        ensureClientDoesNotHang(martian) should
+        ensureClientDoesNotBlock(martian) should
             beInstanceOf<FailureRemoteResult>()
 
         remoteResource.calls.shouldBeEmpty()
@@ -441,7 +441,7 @@ internal class RequestProcessorTest {
         val write = OneWrite("WRITE NAME")
         requestQueue.offer(write)
 
-        val writeResult = ensureClientDoesNotHang(write)
+        val writeResult = ensureClientDoesNotBlock(write)
 
         writeResult.shouldBeInstanceOf<FailureRemoteResult>()
         writeResult.status shouldBe 504 // Gateway timeout
@@ -459,8 +459,8 @@ internal class RequestProcessorTest {
         val abort = unitOfWork.cancelAndUndoChanges("UNDO RENAME")
         requestQueue.offer(abort)
 
-        ensureClientDoesNotHang(read)
-        ensureClientDoesNotHang(abort) shouldBe false
+        ensureClientDoesNotBlock(read)
+        ensureClientDoesNotBlock(abort) shouldBe false
 
         remoteResource.calls shouldBe listOf("READ NAME")
         shouldLogErrors()
@@ -541,18 +541,18 @@ internal class RequestProcessorTest {
     // 5 seconds, JUnit will fail the test (look at @Timeout at the top)
 
     /** @return [RemoteResult] */
-    private fun ensureClientDoesNotHang(request: RemoteQuery) =
+    private fun ensureClientDoesNotBlock(request: RemoteQuery) =
         request.result.get()
 
     /**
      * The [requests] need to be in same order as expected for them to complete.
      */
-    private fun ensureClientDoesNotHang(vararg requests: RemoteQuery) {
+    private fun ensureClientDoesNotBlock(vararg requests: RemoteQuery) {
         for (request in requests)
-            ensureClientDoesNotHang(request)
+            ensureClientDoesNotBlock(request)
     }
 
     /** @return [Boolean] */
-    private fun ensureClientDoesNotHang(request: CancelUnitOfWork) =
+    private fun ensureClientDoesNotBlock(request: CancelUnitOfWork) =
         request.result.get()
 }
