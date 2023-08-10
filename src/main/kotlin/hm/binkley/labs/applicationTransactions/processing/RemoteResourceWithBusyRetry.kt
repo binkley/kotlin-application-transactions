@@ -6,28 +6,22 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
- * An adapter over a [RemoteResource] providing _policy_ for retrying the
+ * An adapter over a [RemoteResource] providing _policy_ for retrying the true
  * resource when it is busy.
- * It does not provide access to [RemoteResource.call].
- *
- * The structure of this class will depend on implementation language.
- * With Kotlin it is nicest to put [remoteResource] last in the constructor
- * to take advantage of syntactic sugar.
- * Named parameters in function calls may come into advantage.
  */
-class RemoteResourceManager(
-    private val remoteResource: RemoteResource,
+class RemoteResourceWithBusyRetry(
+    private val trueRemoteResource: RemoteResource,
     /** How long to wait for the remote resource to become idle. */
     private val waitBeforeRetryRemoteInSeconds: Long = 1L,
-) {
+) : RemoteResource {
     /**
      * Retry a busy remote resource exactly once, pausing
      * [waitBeforeRetryRemoteInSeconds] seconds before retrying.
      */
-    fun callWithBusyRetry(
+    override fun call(
         query: String,
     ): RemoteResult {
-        when (val response = remoteResource.call(query)) {
+        when (val response = trueRemoteResource.call(query)) {
             is SuccessRemoteResult -> return response
             is FailureRemoteResult -> when {
                 !response.isBusy() -> return response
@@ -37,6 +31,6 @@ class RemoteResourceManager(
         // Retry remote after waiting
         SECONDS.sleep(waitBeforeRetryRemoteInSeconds)
 
-        return remoteResource.call(query)
+        return trueRemoteResource.call(query)
     }
 }

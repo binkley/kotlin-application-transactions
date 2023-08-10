@@ -36,18 +36,13 @@ internal class ExampleFrameworkExceptionTest {
 
     @Test
     fun `should have a smart exception message with incomplete information`() {
-        val e1 = ExampleFrameworkException(
-            status = 3,
-            query = null,
-            errorMessage = null,
-        )
+        val e1 = ExampleFrameworkException(status = 3)
 
         e1.message shouldBe "Unsure what happened; remote status code: 3"
 
         val e2 = ExampleFrameworkException(
             status = 3,
             query = "What is your favorite color?",
-            errorMessage = null,
         )
 
         e2.message shouldBe "Unsure what happened;" +
@@ -56,7 +51,6 @@ internal class ExampleFrameworkExceptionTest {
 
         val e3 = ExampleFrameworkException(
             status = 3,
-            query = null,
             errorMessage = "Blue, no teal",
         )
 

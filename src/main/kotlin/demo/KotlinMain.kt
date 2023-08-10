@@ -4,7 +4,7 @@ import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.client.RequestClient
-import hm.binkley.labs.applicationTransactions.processing.RemoteResourceManager
+import hm.binkley.labs.applicationTransactions.processing.RemoteResourceWithBusyRetry
 import hm.binkley.labs.applicationTransactions.processing.RequestProcessor
 import lombok.Generated
 import java.util.concurrent.BlockingQueue
@@ -33,7 +33,7 @@ fun main() {
     val requestQueue = LinkedBlockingQueue<RemoteRequest>()
     val threadPool = newCachedThreadPool()
     val remoteRequests = mutableListOf<String>()
-    val remoteResourceManager = demoRemoteResourceManager(remoteRequests)
+    val remoteResource = demoRemoteResourceManager(remoteRequests)
 
     val logger = LinkedBlockingQueue<String>()
     logToConsole(threadPool, logger)
@@ -42,7 +42,7 @@ fun main() {
         RequestProcessor(
             requestQueue,
             threadPool,
-            remoteResourceManager,
+            remoteResource,
             logger,
         )
     threadPool.submit(processor)
@@ -113,7 +113,7 @@ fun main() {
 }
 
 fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
-    RemoteResourceManager({ query ->
+    RemoteResourceWithBusyRetry({ query ->
         remoteRequests.add(query)
 
         when {

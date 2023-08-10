@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 class RequestProcessor(
     private val requestQueue: BlockingQueue<RemoteRequest>,
     threadPool: ExecutorService,
-    private val remoteResourceManager: RemoteResourceManager,
+    private val remoteResource: RemoteResource,
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
@@ -131,7 +131,7 @@ class RequestProcessor(
     }
 
     private fun respondToClient(request: RemoteQuery): RemoteResult {
-        val result = remoteResourceManager.callWithBusyRetry(request.query)
+        val result = remoteResource.call(request.query)
         if (result is FailureRemoteResult) {
             logFailedQueries(result)
         }
@@ -208,7 +208,7 @@ class RequestProcessor(
 
         var outcome = true
         request.undo.forEach { query ->
-            val result = remoteResourceManager.callWithBusyRetry(query)
+            val result = remoteResource.call(query)
             if (result is FailureRemoteResult) {
                 logFailedQueries(result)
                 outcome = false

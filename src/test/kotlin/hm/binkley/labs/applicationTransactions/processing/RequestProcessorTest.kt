@@ -500,7 +500,7 @@ internal class RequestProcessorTest {
             RequestProcessor(
                 requestQueue = requestQueue,
                 threadPool = threadPool,
-                remoteResourceManager = RemoteResourceManager(remoteResource),
+                remoteResource = RemoteResourceWithBusyRetry(remoteResource),
                 logger = logger,
             )
         )
@@ -524,7 +524,7 @@ internal class RequestProcessorTest {
             RequestProcessor(
                 requestQueue = requestQueue,
                 threadPool = threadPool,
-                remoteResourceManager = RemoteResourceManager(remoteResource),
+                remoteResource = RemoteResourceWithBusyRetry(remoteResource),
                 logger = logger,
                 maxWaitForRemoteResourceInSeconds = 1,
             )
