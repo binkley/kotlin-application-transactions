@@ -46,24 +46,6 @@ internal class RequestClientTest {
     }
 
     @Test
-    fun `should succeed at one write`() {
-        runFakeRequestProcessorForQuery(true, "BLUE IS THE NEW GREEN")
-
-        val response = client.writeOne("CHANGE COLORS")
-
-        response shouldBe "BLUE IS THE NEW GREEN"
-    }
-
-    @Test
-    fun `should fail at one write`() {
-        runFakeRequestProcessorForQuery(false)
-
-        shouldThrow<ExampleFrameworkException> {
-            client.writeOne("CHANGE COLORS")
-        }
-    }
-
-    @Test
     fun `should succeed at one read in a transaction`() {
         runFakeRequestProcessorForQuery(true, "GREEN")
 

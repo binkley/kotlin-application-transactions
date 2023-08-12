@@ -3,7 +3,6 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
-import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
@@ -49,8 +48,6 @@ class RequestProcessor(
                  * All others need exclusive access to remote resource.
                  * These are blocking, run serial, and run on this thread
                  */
-
-                is OneWrite -> runSerialForWrites(request)
 
                 // Canceling a unit of work before any reads/writes sent
                 is CancelUnitOfWork -> cancelUnitOfWorkWithoutWork(request)

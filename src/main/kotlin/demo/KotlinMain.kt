@@ -58,25 +58,19 @@ fun main() {
         val name = client.readOne("READ NAME")
         println("RESULT: $name")
     }
-    println("WRITE SIMPLE REQUEST EXCLUSIVELY BLOCK UNTIL READS COMPLETE")
-    println(client.writeOne("CHANGE NAME"))
 
-    println("DEMONSTRATE ASYNC LOGGING")
-    try {
-        println(client.readOne("ABCD PQRSTUV"))
-    } catch (e: IllegalStateException) {
-        logger.offer(e.toString())
-    }
-    // Busy work so logging shows up before the next demo block.
-    // The logger thread may run slower than this one
-    while (!Thread.interrupted() && !logger.isEmpty())
-        println("WAITING FOR LOG LINE ...")
-
-    println("START A UNIT OF WORK EXPECTING UP TO 2 REQUESTS")
     println(
-        "UNITS OF WORK ARE EXCLUSIVE OF SIMPLE READS AND WRITES AND OF" +
+        "WRITE SINGLE REQUEST EXCLUSIVELY BLOCK UNTIL READS COMPLETE" +
+            " WITHIN A UNIT OF WORK." +
+            " UNITS OF WORK ARE EXCLUSIVE OF SIMPLE READS AND WRITES AND OF" +
             " OTHER UNITS OF WORK"
     )
+
+    client.inExclusiveAccess(1).use { uow ->
+        println(uow.writeOne("CHANGE NAME"))
+    }
+
+    println("START A UNIT OF WORK EXPECTING UP TO 2 REQUESTS")
     val uow = client.inExclusiveAccess(2)
     println("USE OF `use` IS KOTLIN-SPECIFIC: RELEASE RESOURCE AFTER")
     uow.use {

@@ -110,11 +110,13 @@ means a single consumer of the queue processing requests.
 The implementation is a simple state machine based on the type of request:
 
 - Simple reads run in parallel
-- Simple writes wait for reads to finish, and then run in serial
+- Writes run in units of work, and are always serial and exclusive of other 
+  remote calls
 - Units of work (transactions) also wait for reads to finish, and then all
   remote requests in the unit of work run in serial [^1].
-  Units of work are exclusive and never overlap
-
+  Units of work are exclusive and never overlap:
+  this ensures you can batch several remote calls together that need isolation
+  
 It looks like:
 
 ```mermaid
@@ -133,7 +135,7 @@ graph TD
   P -->|"responses including<br>status code and response body"| Client
   R -.->|"responses including<br>status code and<br>response body"| P
   P -->|"retries calls to<br>remote resource"| P
-  P -.->|"call remote resource<br>ensuring writes and UoWs<br>do not overlap"| R
+  P -.->|"call remote resource ensuring<br>UoWs including writes<br>do not overlap"| R
   P -->|"blocks pulling new requests from"| RQ
   RQ -->|"has requests for"| P
   Client -->|"submits requests<br>for remote resource<br>(FIFO order)"| RQ
@@ -154,9 +156,6 @@ val client = RequestClient(requestQueue) // Queue is shared with processor
 
 val data = client.readOne("A REMOTE READ") // runs in parallel
 val otherData = client.readOne("A DIFFERENT READ") // runs in parallel
-
-if ("OK" == data)
-    client.writeOne("CHANGE SOME DATA") // Changes are "auto committed"
 
 try {
     println(client.readOne("ABCD PQRSTUV")) // Bad syntax

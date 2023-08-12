@@ -4,6 +4,7 @@ import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import java.util.concurrent.Future
 
 /**
@@ -22,7 +23,12 @@ internal class RemoteRequestTest {
 
     @Test
     fun `should create one write request`() {
-        val write = OneWrite("TURN THE SKY CLEAR FOR NIGHT")
+        val write = WriteWorkUnit(
+            id = UUID.randomUUID(),
+            expectedUnits = 1,
+            currentUnit = 1,
+            query = "TURN THE SKY CLEAR FOR NIGHT"
+        )
 
         write.query shouldBe "TURN THE SKY CLEAR FOR NIGHT"
         write.result should beInstanceOf<Future<RemoteResult>>()

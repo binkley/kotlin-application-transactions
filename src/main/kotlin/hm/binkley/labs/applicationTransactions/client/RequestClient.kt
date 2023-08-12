@@ -2,7 +2,6 @@ package hm.binkley.labs.applicationTransactions.client
 
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
-import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
@@ -17,12 +16,6 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
     fun readOne(query: String) = runRequest(OneRead(query))
 
     /**
-     * Sends a single simple, exclusive write request to a remote resource.
-     * Writes run serially and exclusive of other requests.
-     */
-    fun writeOne(query: String) = runRequest(OneWrite(query))
-
-    /**
      * Starts an exclusive session with the remote resource employing a
      * [UnitOfWork].
      * Exclusive sessions run serially and exclusive of other requests.
@@ -35,14 +28,16 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
         private val uow = UnitOfWork(expectedUnits)
 
         /**
-         * Sends a single read request to a remote resource.
+         * Sends a single read request to a remote resource within a unit of
+         * work.
          * These may run in parallel with other outstanding read requests,
          * including those started prior to exclusive access.
          */
         override fun readOne(query: String) = runRequest(uow.readOne(query))
 
         /**
-         * Sends a single write request to a remote resource.
+         * Sends a single write request to a remote resource within a unit of
+         * work.
          * Writes run serially and exclusive of other requests.
          */
         override fun writeOne(query: String) = runRequest(uow.writeOne(query))
@@ -53,7 +48,7 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
         }
 
         /**
-         * Aborts the current exclusive access to the remote resource with
+         * Cancels the current exclusive access to the remote resource with
          * instructions for undoing changes.
          */
         override fun cancelAndUndoChanges(undo: List<String>) {

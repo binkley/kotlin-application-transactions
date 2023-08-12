@@ -28,18 +28,10 @@ sealed interface RemoteQuery {
 
 /**
  * A single read request outside a unit of work.
- * Remotely, it runs concurrently with other reads.
+ * Remotely, it runs concurrently in parallel with other reads, including any
+ * initial reads in a unit of work.
  */
 data class OneRead(
-    override val query: String,
-    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
-) : RemoteRequest, RemoteQuery
-
-/**
- * A single write request outside a unit of work.
- * Remotely, it runs serially, and blocks other requests.
- */
-data class OneWrite(
     override val query: String,
     override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
 ) : RemoteRequest, RemoteQuery
