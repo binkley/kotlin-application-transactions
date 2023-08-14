@@ -6,8 +6,12 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
- * An adapter over a [RemoteResource] providing _policy_ for retrying the true
- * resource when it is busy.
+ * An implementation of [RemoteResource] providing _policy_ for retrying
+ * a "true remote resource" when it is busy.
+ *
+ * The retry policy is simple:
+ * 1. Try the first attempt (which succeeds most times).
+ * 2. If the remote resource is busy, try again once only.
  */
 class RemoteResourceWithBusyRetry(
     private val trueRemoteResource: RemoteResource,
