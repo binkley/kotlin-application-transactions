@@ -42,7 +42,7 @@ class RequestProcessor(
         // All other functions support this loop
         while (!Thread.interrupted()) {
             when (val request = requestQueue.take()) {
-                is OneRead -> runParallelForReads(request)
+                is OneRead -> runParallelForSingleReads(request)
 
                 /*
                  * All others need exclusive access to remote resource.
@@ -58,7 +58,7 @@ class RequestProcessor(
         }
     }
 
-    private fun runParallelForReads(request: RemoteQuery) {
+    private fun runParallelForSingleReads(request: RemoteQuery) {
         readerThreads.submit { respondToClient(request) }
     }
 
@@ -66,7 +66,7 @@ class RequestProcessor(
      * If timing out waiting for readers to complete, does not execute the
      * write request.
      */
-    private fun runSerialForWrites(request: RemoteQuery) =
+    private fun runExclusive(request: RemoteQuery) =
         if (!waitForReadersToComplete()) {
             readersDidNotFinishInTime(request)
         } else {
@@ -101,11 +101,11 @@ class RequestProcessor(
                     // cannot check the return type (success vs failure), and
                     // the caller needs to send `AbandonUnitOfWork` to stop
                     // processing of the unit of work
-                    runParallelForReads(currentWork)
+                    runParallelForSingleReads(currentWork)
                 }
 
                 is WriteWorkUnit -> {
-                    val result = runSerialForWrites(currentWork)
+                    val result = runExclusive(currentWork)
                     if (result is FailureRemoteResult) {
                         return
                     }

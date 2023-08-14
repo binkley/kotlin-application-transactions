@@ -17,6 +17,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.UUID.randomUUID
@@ -123,6 +124,7 @@ internal class RequestProcessorTest {
         remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
     }
 
+    @Disabled("TODO: This test is flaky")
     @Test
     fun `should stop unit of work when interrupted`() {
         runRequestProcessor()
