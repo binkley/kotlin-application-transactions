@@ -67,10 +67,9 @@ class RequestProcessor(
      * write request.
      */
     private fun runExclusive(request: RemoteQuery) =
-        if (!waitForReadersToComplete()) {
-            readersDidNotFinishInTime(request)
-        } else {
-            respondToClient(request)
+        when {
+            waitForReadersToComplete() -> respondToClient(request)
+            else -> readersDidNotFinishInTime(request)
         }
 
     private fun cancelUnitOfWorkWithoutWork(request: CancelUnitOfWork) {
