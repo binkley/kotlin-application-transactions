@@ -33,11 +33,18 @@ class RequestProcessor(
     maxWaitForWorkUnitsInSeconds: Long = 1L,
     /** How long to wait for the remote resource to complete a read. */
     private val maxWaitForRemoteResourceInSeconds: Long = 30L,
+    /** How long to wait for the remote resource to become idle. */
+    waitBeforeRetryRemoteInSeconds: Long = 1L,
 ) : Runnable {
-    private val requestQueue =
-        RequestQueue(requestQueue, maxWaitForWorkUnitsInSeconds)
+    private val requestQueue = RequestQueue(
+        requestQueue,
+        maxWaitForWorkUnitsInSeconds,
+    )
+    private val remoteResource = RemoteResourceWithBusyRetry(
+        remoteResource,
+        waitBeforeRetryRemoteInSeconds,
+    )
     private val readerThreads = ReaderThreads(newCachedThreadPool())
-    private val remoteResource = RemoteResourceWithBusyRetry(remoteResource)
 
     override fun run() {
         // The main loop processing client requests to the remote resource.
@@ -255,9 +262,6 @@ class RequestProcessor(
     }
 }
 
-/**
- * THIS BLOCKS.
- */
 private class RequestQueue(
     private val requestQueue: BlockingQueue<RemoteRequest>,
     private val maxWaitForWorkUnitsInSeconds: Long,
@@ -270,9 +274,7 @@ private class RequestQueue(
             requestQueue.take()
         }
 
-    fun pollNextUnitOfWorkRequest(
-        uowId: UUID,
-    ): UnitOfWorkScope? {
+    fun pollNextUnitOfWorkRequest(uowId: UUID): UnitOfWorkScope? {
         fun isCurrentUnitOfWork(request: RemoteRequest) =
             request is UnitOfWorkScope && uowId == request.id
 
