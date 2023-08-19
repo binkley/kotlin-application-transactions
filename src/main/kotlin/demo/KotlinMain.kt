@@ -4,7 +4,7 @@ import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.client.RequestClient
-import hm.binkley.labs.applicationTransactions.processing.RemoteResourceWithBusyRetry
+import hm.binkley.labs.applicationTransactions.processing.RemoteResource
 import hm.binkley.labs.applicationTransactions.processing.RequestProcessor
 import lombok.Generated
 import java.util.concurrent.BlockingQueue
@@ -106,7 +106,7 @@ fun main() {
 }
 
 fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
-    RemoteResourceWithBusyRetry({ query ->
+    RemoteResource { query ->
         remoteRequests.add(query)
 
         when {
@@ -116,7 +116,7 @@ fun demoRemoteResourceManager(remoteRequests: MutableList<String>) =
             else ->
                 FailureRemoteResult(400, query, "BAD SYNTAX: $query")
         }
-    })
+    }
 
 /**
  * Reading through the code, this is "noise":

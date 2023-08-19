@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit.SECONDS
  */
 class RequestProcessor(
     requestQueue: BlockingQueue<RemoteRequest>,
-    private val remoteResource: RemoteResource,
+    remoteResource: RemoteResource,
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
@@ -37,6 +37,7 @@ class RequestProcessor(
     private val requestQueue =
         RequestQueue(requestQueue, maxWaitForWorkUnitsInSeconds)
     private val readerThreads = ReaderThreads(newCachedThreadPool())
+    private val remoteResource = RemoteResourceWithBusyRetry(remoteResource)
 
     override fun run() {
         // The main loop processing client requests to the remote resource.

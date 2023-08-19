@@ -123,20 +123,6 @@ internal class RequestProcessorTest {
         remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
     }
 
-    @Disabled("TODO: This test is flaky")
-    @Test
-    fun `should stop unit of work when interrupted`() {
-        runRequestProcessor()
-
-        val uow = UnitOfWork(2)
-        val request = uow.writeOne("WRITE NAME")
-
-        requestQueue.offer(request)
-        threadPool.shutdownNow()
-
-        threadPool.awaitTermination(1, SECONDS) shouldBe true
-    }
-
     @Test
     fun `should process work unit writes`() {
         val remoteResource = runRequestProcessor()
@@ -475,7 +461,7 @@ internal class RequestProcessorTest {
         threadPool.submit(
             RequestProcessor(
                 requestQueue = requestQueue,
-                remoteResource = RemoteResourceWithBusyRetry(remoteResource),
+                remoteResource = remoteResource,
                 logger = logger,
             )
         )
@@ -498,7 +484,7 @@ internal class RequestProcessorTest {
         threadPool.submit(
             RequestProcessor(
                 requestQueue = requestQueue,
-                remoteResource = RemoteResourceWithBusyRetry(remoteResource),
+                remoteResource = remoteResource,
                 logger = logger,
                 maxWaitForRemoteResourceInSeconds = 1,
             )
