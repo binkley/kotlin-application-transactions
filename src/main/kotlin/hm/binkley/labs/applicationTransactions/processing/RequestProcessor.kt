@@ -25,23 +25,25 @@ import java.util.concurrent.TimeUnit.SECONDS
  *   when a client caller is slow, cancel the unit of work
  */
 class RequestProcessor(
-    private val requestQueue: BlockingQueue<RemoteRequest>,
+    requestQueue: BlockingQueue<RemoteRequest>,
     threadPool: ExecutorService,
     private val remoteResource: RemoteResource,
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
-    private val maxWaitForWorkUnitsInSeconds: Long = 1L,
+    maxWaitForWorkUnitsInSeconds: Long = 1L,
     /** How long to wait for the remote resource to complete a read. */
     private val maxWaitForRemoteResourceInSeconds: Long = 30L,
 ) : Runnable {
+    private val requestQueue =
+        RequestQueue(requestQueue, maxWaitForWorkUnitsInSeconds)
     private val readerThreads = ReaderThreads(threadPool)
 
     override fun run() {
         // The main loop processing client requests to the remote resource.
         // All other functions support this loop
-        while (!Thread.interrupted()) {
-            when (val request = requestQueue.take()) {
+        while (true) {
+            when (val request = requestQueue.takeAnyNextRequest()) {
                 is OneRead -> runParallelForSingleReads(request)
 
                 /*
@@ -83,7 +85,7 @@ class RequestProcessor(
         /** Tracks the current work unit in case of bugs in the caller. */
         var expectedCurrent = 1
 
-        while (!Thread.interrupted()) {
+        while (true) {
             if (isBugInWorkUnit(startWork, currentWork, expectedCurrent)) {
                 return
             }
@@ -98,8 +100,8 @@ class RequestProcessor(
                 is ReadWorkUnit -> {
                     // Note: as this does not run in the current thread, we
                     // cannot check the return type (success vs failure), and
-                    // the caller needs to send `AbandonUnitOfWork` to stop
-                    // processing of the unit of work
+                    // the caller needs to send `CancelUnitOfWork` to stop
+                    // processing of the unit of work early
                     runParallelForSingleReads(currentWork)
                 }
 
@@ -115,7 +117,7 @@ class RequestProcessor(
                 return
             }
 
-            val found = awaitNextWorkUnit(currentWork.id)
+            val found = requestQueue.pollNextUnitOfWorkRequest(currentWork.id)
             if (null == found) {
                 logSlowUnitOfWork(currentWork)
                 return
@@ -214,16 +216,6 @@ class RequestProcessor(
         request.result.complete(outcome)
     }
 
-    private fun awaitNextWorkUnit(id: UUID): UnitOfWorkScope? {
-        val found = pollForNextWorkUnit(id)
-        if (null != found) return found
-
-        // Let client process some, and try again
-        SECONDS.sleep(maxWaitForWorkUnitsInSeconds)
-
-        return pollForNextWorkUnit(id)
-    }
-
     private fun readersDidNotFinishInTime(request: RemoteQuery):
         FailureRemoteResult {
         logSlowReaders()
@@ -239,19 +231,6 @@ class RequestProcessor(
 
         request.result.complete(false)
     }
-
-    /**
-     * Find the next request queue item that is:
-     * 1. A unit of work
-     * 2. Has [id] for that unit of work
-     * and removes that item from the queue
-     *
-     * @return the first matching request, or `null` if none found
-     */
-    private fun pollForNextWorkUnit(id: UUID) =
-        requestQueue.removeFirstThat { request ->
-            request is UnitOfWorkScope && id == request.id
-        } as UnitOfWorkScope?
 
     /** @todo Logging */
     private fun logSlowReaders() {
@@ -277,23 +256,48 @@ class RequestProcessor(
 }
 
 /**
- * Remove the next element that matches [predicate].
- *
- * @return the first matching element, or `null` if none found
+ * THIS BLOCKS.
  */
-private fun <T> MutableIterable<T>.removeFirstThat(
-    predicate: (T) -> Boolean
-): T? {
-    val itr = iterator()
-    while (itr.hasNext()) {
-        val element = itr.next()
-        if (predicate(element)) {
-            itr.remove()
-            return element
+private class RequestQueue(
+    private val requestQueue: BlockingQueue<RemoteRequest>,
+    private val maxWaitForWorkUnitsInSeconds: Long,
+    private val spilloverList: MutableList<RemoteRequest> = mutableListOf(),
+) {
+    fun takeAnyNextRequest(): RemoteRequest =
+        if (spilloverList.isNotEmpty()) {
+            spilloverList.removeFirst()
+        } else {
+            requestQueue.take()
+        }
+
+    fun pollNextUnitOfWorkRequest(
+        uowId: UUID,
+    ): UnitOfWorkScope? {
+        fun isCurrentUnitOfWork(request: RemoteRequest) =
+            request is UnitOfWorkScope && uowId == request.id
+
+        // More efficient would be to walk an iterator over the spillover list,
+        // and remove the element if matching, but that is less portable for
+        // languages like C# which do not support iterators that mutate
+        var nextRequest = spilloverList.firstOrNull(::isCurrentUnitOfWork)
+        if (null != nextRequest) {
+            spilloverList.remove(nextRequest)
+            return nextRequest as UnitOfWorkScope
+        }
+
+        while (true) {
+            nextRequest =
+                requestQueue.poll(maxWaitForWorkUnitsInSeconds, SECONDS)
+            when {
+                null == nextRequest -> return null
+
+                isCurrentUnitOfWork(nextRequest) ->
+                    return nextRequest as UnitOfWorkScope
+
+                else -> spilloverList.add(nextRequest)
+            }
         }
     }
-
-    return null
 }
 
 private fun respondToClientWithBug(
