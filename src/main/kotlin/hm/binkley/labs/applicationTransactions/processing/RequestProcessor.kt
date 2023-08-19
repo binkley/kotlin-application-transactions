@@ -263,7 +263,7 @@ class RequestProcessor(
 }
 
 private class RequestQueue(
-    private val requestQueue: BlockingQueue<RemoteRequest>,
+    private val sharedWithCallers: BlockingQueue<RemoteRequest>,
     private val maxWaitForWorkUnitsInSeconds: Long,
     private val spilloverList: MutableList<RemoteRequest> = mutableListOf(),
 ) {
@@ -271,7 +271,7 @@ private class RequestQueue(
         if (spilloverList.isNotEmpty()) {
             spilloverList.removeFirst()
         } else {
-            requestQueue.take()
+            sharedWithCallers.take()
         }
 
     fun pollNextUnitOfWorkRequest(uowId: UUID): UnitOfWorkScope? {
@@ -289,7 +289,7 @@ private class RequestQueue(
 
         while (true) {
             nextRequest =
-                requestQueue.poll(maxWaitForWorkUnitsInSeconds, SECONDS)
+                sharedWithCallers.poll(maxWaitForWorkUnitsInSeconds, SECONDS)
             when {
                 null == nextRequest -> return null
 
