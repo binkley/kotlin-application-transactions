@@ -12,7 +12,7 @@ import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import java.util.Queue
 import java.util.UUID
 import java.util.concurrent.BlockingQueue
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors.newCachedThreadPool
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit.SECONDS
  */
 class RequestProcessor(
     requestQueue: BlockingQueue<RemoteRequest>,
-    threadPool: ExecutorService,
     private val remoteResource: RemoteResource,
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
@@ -37,7 +36,7 @@ class RequestProcessor(
 ) : Runnable {
     private val requestQueue =
         RequestQueue(requestQueue, maxWaitForWorkUnitsInSeconds)
-    private val readerThreads = ReaderThreads(threadPool)
+    private val readerThreads = ReaderThreads(newCachedThreadPool())
 
     override fun run() {
         // The main loop processing client requests to the remote resource.

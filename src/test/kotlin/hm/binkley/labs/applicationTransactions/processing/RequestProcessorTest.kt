@@ -475,7 +475,6 @@ internal class RequestProcessorTest {
         threadPool.submit(
             RequestProcessor(
                 requestQueue = requestQueue,
-                threadPool = threadPool,
                 remoteResource = RemoteResourceWithBusyRetry(remoteResource),
                 logger = logger,
             )
@@ -499,7 +498,6 @@ internal class RequestProcessorTest {
         threadPool.submit(
             RequestProcessor(
                 requestQueue = requestQueue,
-                threadPool = threadPool,
                 remoteResource = RemoteResourceWithBusyRetry(remoteResource),
                 logger = logger,
                 maxWaitForRemoteResourceInSeconds = 1,

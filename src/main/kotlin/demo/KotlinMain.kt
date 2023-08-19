@@ -41,7 +41,6 @@ fun main() {
     val processor =
         RequestProcessor(
             requestQueue,
-            threadPool,
             remoteResource,
             logger,
         )
