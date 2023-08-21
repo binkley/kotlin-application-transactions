@@ -9,11 +9,11 @@ import java.util.concurrent.TimeUnit.SECONDS
 internal class RequestQueue(
     private val sharedWithCallers: BlockingQueue<RemoteRequest>,
     private val maxWaitForWorkUnitsInSeconds: Long,
-    private val spilloverList: MutableList<RemoteRequest> = mutableListOf(),
+    private val spillover: MutableList<RemoteRequest> = mutableListOf(),
 ) {
     fun takeAnyNextRequest(): RemoteRequest =
-        if (spilloverList.isNotEmpty()) {
-            spilloverList.removeFirst()
+        if (spillover.isNotEmpty()) {
+            spillover.removeFirst()
         } else {
             sharedWithCallers.take()
         }
@@ -25,22 +25,24 @@ internal class RequestQueue(
         // More efficient would be to walk an iterator over the spillover list,
         // and remove the element if matching, but that is less portable for
         // languages like C# which do not support iterators that mutate
-        var nextRequest = spilloverList.firstOrNull(::isCurrentUnitOfWork)
+        var nextRequest = spillover.firstOrNull(::isCurrentUnitOfWork)
         if (null != nextRequest) {
-            spilloverList.remove(nextRequest)
+            spillover.remove(nextRequest)
             return nextRequest as UnitOfWorkScope
         }
 
         while (true) {
-            nextRequest =
-                sharedWithCallers.poll(maxWaitForWorkUnitsInSeconds, SECONDS)
+            nextRequest = sharedWithCallers.poll(
+                maxWaitForWorkUnitsInSeconds,
+                SECONDS
+            )
             when {
                 null == nextRequest -> return null
 
                 isCurrentUnitOfWork(nextRequest) ->
                     return nextRequest as UnitOfWorkScope
 
-                else -> spilloverList.add(nextRequest)
+                else -> spillover.add(nextRequest)
             }
         }
     }
