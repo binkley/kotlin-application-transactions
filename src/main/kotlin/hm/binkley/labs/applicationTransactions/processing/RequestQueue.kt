@@ -18,6 +18,12 @@ internal class RequestQueue(
             sharedWithCallers.take()
         }
 
+    /**
+     * _Notes_:
+     *
+     * In languages like C# this would use `FirstOrDefault` with a default of
+     * `null`.
+     */
     fun pollNextUnitOfWorkRequest(uowId: UUID): UnitOfWorkScope? {
         fun isCurrentUnitOfWork(request: RemoteRequest) =
             request is UnitOfWorkScope && uowId == request.id
