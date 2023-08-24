@@ -9,6 +9,7 @@ import hm.binkley.labs.applicationTransactions.RemoteRequest
 import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.UnitOfWorkScope
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
+import hm.binkley.labs.applicationTransactions.client.RequestClient
 import java.util.Queue
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.Executors.newCachedThreadPool
@@ -24,13 +25,14 @@ import java.util.concurrent.TimeUnit.SECONDS
  *   when a client caller is slow, cancel the unit of work
  */
 class RequestProcessor(
+    /** The request queue shared with [RequestClient]. */
     requestQueue: BlockingQueue<RemoteRequest>,
     remoteResource: RemoteResource,
     /** An utterly generic idea of a logger. */
     private val logger: Queue<String>,
     /** How long to wait to retry scanning for the next work unit. */
     maxWaitForWorkUnitsInSeconds: Long = 1L,
-    /** How long to wait for the remote resource to complete a read. */
+    /** How long to wait for the remote resource to complete a request. */
     private val maxWaitForRemoteResourceInSeconds: Long = 30L,
     /** How long to wait for the remote resource to become idle. */
     waitBeforeRetryRemoteInSeconds: Long = 1L,
