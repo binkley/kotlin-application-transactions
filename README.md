@@ -98,7 +98,7 @@ abstractions that need translation into an actual distributed scenario:
 - A searchable, concurrent-safe queue for submitting requests for remote
   processing
 - The queue can block when looking for next element (alternative: add 
-  busy-retry)
+  busy-retry) and when searching for a middle matching element
 - A means for exclusive access to the remote resource
 - Callers and tests can wait on completion of submitted work
 
@@ -196,6 +196,14 @@ where specific to your language `requestQueue` is a thread-safe, blocking FIFO
 queue that is searchable, `threadPool` is a facility for starting and managing 
 threads, and `remoteResource` represents calling the remote resource you 
 would like to protect against simultaneous writes or blocks work.
+
+### Bonus
+
+The
+[SearchableBlockingQueue](./src/main/kotlin/hm/binkley/labs/util/SearchableBlockingQueue.kt)
+supports searching within a blocking queue on the JVM.
+It is generic and independent of this project.
+Similar concepts are suitable for non-JVM platforms such as C#.
 
 ### Tips
 
