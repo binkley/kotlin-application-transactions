@@ -6,11 +6,23 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.DAYS
 
 /**
- * This is a blocking queue that may be searched for earlier elements
- * matching a criteria.
+ * A blocking queue that may be searched for non-head elements matching a
+ * filter.
+ *
+ * This blocking queue tracks elements in their encounter order as they are
+ * removed from the [shared] underlying blocking queue, later providing
+ * non-matching elements in encounter order they occur as if they were
+ * originally in the queue after matching elements.
+ * This preserves FIFO ordering after removing matching elements.
+ *
  * It uses a private "spillover" list to maintain elements that failed to
- * match a criteria while remaining as a FIFO queue for those elements not
- * matching the criteria and any following elements.
+ * match the filter while remaining as a FIFO queue for those elements not
+ * matching the filter and any later elements.
+ *
+ * This splits the queue into two halves:
+ * 1. The "front" half holding elements that did not match a previous filter
+ *    while maintaining their FIFO ordering
+ * 2. The "back" half of blocking queue elements not yet encountered
  */
 class SearchableBlockingQueue<T>(
     /** The blocking queue shared with producers. */
