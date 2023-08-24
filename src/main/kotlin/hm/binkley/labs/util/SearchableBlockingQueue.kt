@@ -3,6 +3,7 @@ package hm.binkley.labs.util
 import java.util.AbstractQueue
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.DAYS
 
 /**
  * This is a blocking queue that may be searched for earlier elements
@@ -80,7 +81,23 @@ class SearchableBlockingQueue<T>(
             shared.poll(timeout, unit)
         }
 
-    fun poll(filter: (T) -> Boolean): T? {
+    /**
+     * Polls the queue for a next element which matches [filter].
+     * This searches through the queue finding the first matching element
+     * equivalent to a timeout of 0.
+     *
+     * @see BlockingQueue.poll
+     */
+    fun poll(filter: (T) -> Boolean): T? = poll(0L, DAYS, filter)
+
+    /**
+     * Polls the queue for a next element which matches [filter] given a
+     * timeout.
+     * This searches through the queue finding the first matching element.
+     *
+     * @see BlockingQueue.poll
+     */
+    fun poll(timeout: Long, unit: TimeUnit, filter: (T) -> Boolean): T? {
         val spilloverItr = spillover.iterator()
         while (spilloverItr.hasNext()) {
             val next = spilloverItr.next()
@@ -90,22 +107,15 @@ class SearchableBlockingQueue<T>(
             }
         }
 
-        var next = shared.poll()
+        var next = shared.poll(timeout, unit)
         while (null != next) {
             if (filter(next)) return next
             spillover.add(next)
-            next = shared.poll()
+            next = shared.poll(timeout, unit)
         }
 
         return null
     }
-
-    // TODO: Implement
-    /*
-    fun poll(timeout: Long, unit: TimeUnit, filter: (T) -> Boolean): T? {
-        TODO("Not yet implemented")
-    }
-     */
 
     override fun take(): T =
         if (spillover.isNotEmpty()) {

@@ -151,6 +151,13 @@ internal class SearchableBlockingQueueTest {
     }
 
     @Test
+    fun `should poll one matching and time elapses`() {
+        val matched = queue.poll(1L, MILLISECONDS) { it == "NANCY" }
+
+        matched shouldBe null
+    }
+
+    @Test
     fun `should iterate when empty`() {
         var hasElements = false
 
