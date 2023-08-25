@@ -11,6 +11,7 @@ import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import hm.binkley.labs.applicationTransactions.client.UnitOfWork
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainOnly
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -177,7 +178,7 @@ internal class RequestProcessorTest {
 
     @Test
     fun `should isolate work units from simple reads`() {
-        val remoteResource = runRequestProcessor()
+        val remoteResource = runSlowReadUnitOfWorkProcessor()
 
         val uow = UnitOfWork(2)
         val writeWorkUnit = uow.writeOne("WRITE NAME")
@@ -188,13 +189,16 @@ internal class RequestProcessorTest {
         requestQueue.offer(interleaved)
         requestQueue.offer(readWorkUnit)
 
+        // Note that the ordering of "FAVORITE COLOR" and "READ NAME" are
+        // indeterminate: both are reads and run in threads.
+        // "FAVORITE COLOR" is not part of the unit of work, but only needs
+        // to ensure that it runs after all writes complete.
+
         ensureClientDoesNotBlock(writeWorkUnit, readWorkUnit, interleaved)
-        remoteResource.calls shouldBe listOf(
-            "WRITE NAME",
-            "READ NAME",
-            "FAVORITE COLOR",
-        )
         uow.completed shouldBe true
+        remoteResource.calls.removeFirst() shouldBe "WRITE NAME"
+        remoteResource.calls shouldContainOnly
+            setOf("FAVORITE COLOR", "READ NAME")
     }
 
     /**
@@ -436,17 +440,35 @@ internal class RequestProcessorTest {
             }
         }
 
+    private fun runSlowReadUnitOfWorkProcessor(): TestRecordingRemoteResource =
+        runRecordingRequestProcessor { query ->
+            when (query) {
+                "READ NAME" -> {
+                    MILLISECONDS.sleep(600)
+                    SuccessRemoteResult(
+                        200,
+                        query,
+                        "I TOOK MY TIME ABOUT IT: $query"
+                    )
+                }
+
+                else -> SuccessRemoteResult(200, query, "$query: CHARLIE")
+            }
+        }
+
     private fun runSlowRequestProcessor(): TestRecordingRemoteResource =
         runRecordingRequestProcessor { query ->
-            if (query.contains("SLOW LORIS")) {
-                MILLISECONDS.sleep(600)
-                SuccessRemoteResult(
-                    200,
-                    query,
-                    "I TOOK MY TIME ABOUT IT: $query",
-                )
-            } else {
-                SuccessRemoteResult(200, query, "$query: CHARLIE")
+            when {
+                query.contains("SLOW LORIS") -> {
+                    MILLISECONDS.sleep(600)
+                    SuccessRemoteResult(
+                        200,
+                        query,
+                        "I TOOK MY TIME ABOUT IT: $query",
+                    )
+                }
+
+                else -> SuccessRemoteResult(200, query, "$query: CHARLIE")
             }
         }
 

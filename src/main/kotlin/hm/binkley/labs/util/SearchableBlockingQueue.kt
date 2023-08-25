@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit.DAYS
  * 2. The "back" half of blocking queue elements for elements not yet
  *    encountered drawing from the shared queue
  */
-class SearchableBlockingQueue<T>(
+class SearchableBlockingQueue<T : Any>(
     /** The blocking queue shared with producers. */
     private val shared: BlockingQueue<T>
 ) : AbstractQueue<T>(), BlockingQueue<T> {
