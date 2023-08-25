@@ -119,17 +119,23 @@ if $run; then
 
     # shellcheck disable=SC2086
     ./mvnw $flags "$@" $targets || ((rc += $?)) || true
-else
-    # Refresh coverage report when editing limits in pom.xml without rebuild
-    # shellcheck disable=SC2086
-    ./mvnw $flags "$@" jacoco:report jacoco:check || ((rc += $?)) || true
 fi
 
 if $open; then
-    [[ -r target/site/jacoco/index.html ]] && \
+    if [[ -r target/site/jacoco/index.html ]]; then
         (cd target/site/jacoco && open index.html)
-    [[ -r target/pit-reports/index.html ]] && \
-        (cd target/pit-reports && open index.html)
+    else
+        echo "$0: No unit test coverage report" >&2
+        ((rc++)) || true
+    fi
+    if $mutation; then
+        if [[ -r target/pit-reports/index.html ]]; then
+            (cd target/pit-reports && open index.html)
+        else
+            echo "$0: No mutation test coverage report" >&2
+            ((rc++)) || true
+        fi
+    fi
 fi
 
 # shellcheck disable=SC2086
