@@ -354,15 +354,7 @@
                     <avoidCallsTo>
                         <avoidCallsTo>kotlin.jvm.internal</avoidCallsTo>
                     </avoidCallsTo>
-                    <excludedMethods>
-                        <excludedMethod>byteValue</excludedMethod>
-                        <excludedMethod>doubleValue</excludedMethod>
-                        <excludedMethod>floatValue</excludedMethod>
-                        <excludedMethod>intValue</excludedMethod>
-                        <excludedMethod>longValue</excludedMethod>
-                        <excludedMethod>shortValue</excludedMethod>
-                    </excludedMethods>
-                    <!-- TODO: How to make mutation testing happier? -->
+                    <excludedClasses>demo.*</excludedClasses>
                     <mutationThreshold>${coverage.mutation}</mutationThreshold>
                     <targetClasses>
                         <param>hm.binkley*</param>
@@ -370,8 +362,8 @@
                     <targetTests>
                         <param>hm.binkley*</param>
                     </targetTests>
-                    <withHistory>true</withHistory>
                     <timestampedReports>false</timestampedReports>
+                    <withHistory>true</withHistory>
                 </configuration>
                 <executions>
                     <execution>
