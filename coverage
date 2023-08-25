@@ -21,7 +21,7 @@ OPTIONS:
                           unit - unit only
   -h, --help            print this help and exit
   -m, --with-mutation   also check mutation coverage
-  -o, --open-report     open coverage reports in a web browser
+  -o, --open-report     open coverage report(s) in a web browser
   -x, --no-rerun        only open coverage reports, do not rerun build
 
 ARGUMENTS:
@@ -112,7 +112,7 @@ esac
 ((rc = 0)) || true
 if $run; then
     if $mutation; then
-        targets='-DwithHistory verify'
+        targets='verify'
     else
         targets='test jacoco:report jacoco:check'
     fi
@@ -121,20 +121,15 @@ if $run; then
     ./mvnw $flags "$@" $targets || ((rc += $?)) || true
 else
     # Refresh coverage report when editing limits in pom.xml without rebuild
+    # shellcheck disable=SC2086
     ./mvnw $flags "$@" jacoco:report jacoco:check || ((rc += $?)) || true
 fi
 
 if $open; then
-    if require-file target/site/jacoco/index.html; then
+    [[ -r target/site/jacoco/index.html ]] && \
         (cd target/site/jacoco && open index.html)
-    else
-        ((++rc))
-    fi
-    if $mutation && require-file target/pit-reports/index.html; then
+    [[ -r target/pit-reports/index.html ]] && \
         (cd target/pit-reports && open index.html)
-    else
-        ((++rc))
-    fi
 fi
 
 # shellcheck disable=SC2086
