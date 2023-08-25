@@ -20,7 +20,7 @@ internal class RequestQueue(
     fun takeAnyNextRequest(): RemoteRequest = queue.take()
 
     /** Polls for the next request part of a current unit of work. */
-    fun pollNextUnitOfWorkRequest(uowId: UUID): UnitOfWorkScope? =
+    fun pollNextUnitOfWorkRequest(uowId: UUID) =
         queue.poll(maxWaitForWorkUnitsInSeconds, SECONDS) { request ->
             request is UnitOfWorkScope && uowId == request.id
         } as UnitOfWorkScope?

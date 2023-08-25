@@ -145,22 +145,22 @@ class SearchableBlockingQueue<T>(
     override fun remainingCapacity(): Int = shared.remainingCapacity()
 
     override fun drainTo(c: MutableCollection<in T>): Int {
-        var drainTo = 0
-        drainTo += spillover.size
+        var drained = 0
+        drained += spillover.size
         c.addAll(spillover)
         spillover.clear()
-        drainTo += shared.drainTo(c)
-        return drainTo
+        drained += shared.drainTo(c)
+        return drained
     }
 
     override fun drainTo(c: MutableCollection<in T>, maxElements: Int): Int {
-        var n = 0
-        while (n < maxElements && spillover.isNotEmpty()) {
+        var drained = 0
+        while (drained < maxElements && spillover.isNotEmpty()) {
             c.add(spillover.removeFirst())
-            ++n
+            ++drained
         }
-        n += shared.drainTo(c, maxElements - n)
-        return n
+        drained += shared.drainTo(c, maxElements - drained)
+        return drained
     }
 
     override fun put(e: T) = shared.put(e)

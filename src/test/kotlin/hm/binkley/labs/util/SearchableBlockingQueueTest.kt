@@ -262,11 +262,12 @@ internal class SearchableBlockingQueueTest {
         queue.put("BOB")
         queue.put("NANCY")
         queue.poll { it == "NANCY" }
+        queue.put("FRED")
 
         val drained = queue.drainTo(c)
 
         drained shouldBe c.size
-        c shouldBe listOf("BOB")
+        c shouldBe listOf("BOB", "FRED")
         queue shouldBe emptyList()
     }
 
