@@ -15,8 +15,16 @@ import java.util.concurrent.TimeUnit.SECONDS
  */
 class RemoteResourceWithBusyRetry(
     private val trueRemoteResource: RemoteResource,
-    /** How long to wait for the remote resource to become idle. */
-    private val waitBeforeRetryRemoteInSeconds: Long = 1L,
+    /**
+     * How many times to try the remote resource before failing when it is busy.
+     * The default is to try twice.
+     */
+    private val maxTries: Int = 2,
+    /**
+     * How long to wait for the remote resource to become idle.
+     * The default is to wait 1 second.
+     */
+    private val waitBetweenRemoteRetriesInSeconds: Long = 1L,
 ) : RemoteResource {
     /**
      * Retry a busy remote resource exactly once, pausing
@@ -29,7 +37,7 @@ class RemoteResourceWithBusyRetry(
         }
 
         // Retry remote after waiting
-        SECONDS.sleep(waitBeforeRetryRemoteInSeconds)
+        SECONDS.sleep(waitBetweenRemoteRetriesInSeconds)
 
         return trueRemoteResource.call(query)
     }

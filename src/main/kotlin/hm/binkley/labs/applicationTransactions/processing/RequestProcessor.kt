@@ -28,23 +28,45 @@ class RequestProcessor(
     /** The request queue shared with [RequestClient]. */
     requestQueue: BlockingQueue<RemoteRequest>,
     remoteResource: RemoteResource,
-    /** An utterly generic idea of a logger. */
+    /** TODO: An utterly generic idea of a logger. */
     private val logger: Queue<String>,
-    /** How long to wait to retry scanning for the next work unit. */
+    /**
+     * How long to wait to retry scanning for the next work unit.
+     * This time is to detect when a unit of work does not make progress, and
+     * open the remote resource to other queries.
+     * Units of work failing this timeout are cancelled.
+     * The default is to wait 1 second.
+     */
     maxWaitForWorkUnitsInSeconds: Long = 1L,
-    /** How long to wait for the remote resource to complete a request. */
+    /**
+     * How long to wait for the remote resource to complete a request
+     * respecting that the remote resource may take a while for an
+     * instruction/query.
+     * The default is to wait 30 seconds.
+     */
     private val maxWaitForRemoteResourceInSeconds: Long = 30L,
-    /** How long to wait for the remote resource to become idle. */
-    waitBeforeRetryRemoteInSeconds: Long = 1L,
+    /**
+     * How long to wait for the remote resource to become idle.
+     * If a remote resource is busy, this is the time to wait for it to free up.
+     * The default is to wait 1 second.
+     */
+    waitBetweenRemoteRetriesInSeconds: Long = 1L,
 ) : Runnable {
     private val requestQueue = RequestQueue(
-        requestQueue,
-        maxWaitForWorkUnitsInSeconds,
+        sharedWithCallers = requestQueue,
+        maxWaitForWorkUnitsInSeconds = maxWaitForWorkUnitsInSeconds,
     )
     private val remoteResource = RemoteResourceWithBusyRetry(
-        remoteResource,
-        waitBeforeRetryRemoteInSeconds,
+        trueRemoteResource = remoteResource,
+        maxTries = 2,
+        waitBetweenRemoteRetriesInSeconds = waitBetweenRemoteRetriesInSeconds,
     )
+
+    /**
+     * Reader threads for the remote resource run in parallel.
+     * The hard-coded policy is to use the JVM "cached thread pool".
+     * This may change for other languages such as C#.
+     */
     private val readerThreads = ReaderThreads(newCachedThreadPool())
 
     override fun run() {
