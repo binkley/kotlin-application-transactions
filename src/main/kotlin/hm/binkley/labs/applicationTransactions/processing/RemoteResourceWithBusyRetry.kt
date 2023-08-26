@@ -22,9 +22,7 @@ class RemoteResourceWithBusyRetry(
      * Retry a busy remote resource exactly once, pausing
      * [waitBeforeRetryRemoteInSeconds] seconds before retrying.
      */
-    override fun call(
-        query: String,
-    ): RemoteResult {
+    override fun call(query: String): RemoteResult {
         when (val response = trueRemoteResource.call(query)) {
             is SuccessRemoteResult -> return response
             is FailureRemoteResult -> if (!response.isBusy()) return response
