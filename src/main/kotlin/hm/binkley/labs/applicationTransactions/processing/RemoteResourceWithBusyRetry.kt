@@ -27,9 +27,7 @@ class RemoteResourceWithBusyRetry(
     ): RemoteResult {
         when (val response = trueRemoteResource.call(query)) {
             is SuccessRemoteResult -> return response
-            is FailureRemoteResult -> when {
-                !response.isBusy() -> return response
-            }
+            is FailureRemoteResult -> if (!response.isBusy()) return response
         }
 
         // Retry remote after waiting

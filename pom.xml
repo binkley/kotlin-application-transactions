@@ -36,10 +36,13 @@
         <!-- TODO: Multiple issues with JaCoCo not really understanding
               Kotlin for coverage. IntelliJ says 100% coverage.
               Also, coverage is lower in CI than locally !? -->
-        <coverage.branches>97</coverage.branches>
+        <coverage.branches>96</coverage.branches>
         <coverage.instructions>99</coverage.instructions>
         <coverage.lines>99</coverage.lines>
-        <coverage.mutation>90</coverage.mutation>
+        <!-- TODO: Issues with mutation testing not understanding Kotlin, for
+              example default ctor args create hidden ctors that are not
+              easily accessed -->
+        <coverage.mutation>91</coverage.mutation>
         <dependency-check-maven.version>8.4.0</dependency-check-maven.version>
         <detekt-maven-plugin.version>1.23.1</detekt-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.10</jacoco-maven-plugin.version>

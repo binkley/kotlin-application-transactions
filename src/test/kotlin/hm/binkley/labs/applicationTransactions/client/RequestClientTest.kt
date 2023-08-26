@@ -113,6 +113,13 @@ internal class RequestClientTest {
         }
     }
 
+    @Test
+    fun `should complain when closed prematurely`() {
+        shouldThrow<IllegalStateException> {
+            client.inExclusiveAccess(1).use {}
+        }
+    }
+
     private fun runFakeRequestProcessorForQuery(
         succeedOrFail: Boolean,
         responseForSuccess: String = "",
