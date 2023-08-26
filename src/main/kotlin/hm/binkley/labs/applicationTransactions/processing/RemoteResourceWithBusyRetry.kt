@@ -7,11 +7,12 @@ import java.util.concurrent.TimeUnit.SECONDS
 
 /**
  * An implementation of [RemoteResource] providing _policy_ for retrying
- * a "true remote resource" when it is busy.
+ * a "true remote resource" when it is busy assuming a constant pause between
+ * retries (see [waitBetweenRemoteRetriesInSeconds].
  *
  * The retry policy is simple:
  * 1. Try the first attempt (which succeeds most times).
- * 2. If the remote resource is busy, try again once only.
+ * 2. If the remote resource is busy, try again up to [maxTries].
  */
 class RemoteResourceWithBusyRetry(
     private val trueRemoteResource: RemoteResource,
@@ -26,19 +27,38 @@ class RemoteResourceWithBusyRetry(
      */
     private val waitBetweenRemoteRetriesInSeconds: Long = 1L,
 ) : RemoteResource {
+    init {
+        require(0 < maxTries) {
+            "BUG: Calling the remote resource 0 times"
+        }
+    }
+
     /**
-     * Retry a busy remote resource exactly once, pausing
-     * [waitBeforeRetryRemoteInSeconds] seconds before retrying.
+     * Retry a busy remote resource, pausing
+     * [waitBetweenRemoteRetriesInSeconds] seconds between retries.
      */
     override fun call(query: String): RemoteResult {
-        when (val response = trueRemoteResource.call(query)) {
+        var tries = 1
+        var response = trueRemoteResource.call(query)
+
+        when (response) {
             is SuccessRemoteResult -> return response
-            is FailureRemoteResult -> if (!response.isBusy()) return response
+            is FailureRemoteResult ->
+                if (!response.isBusy()) return response
         }
 
-        // Retry remote after waiting
-        SECONDS.sleep(waitBetweenRemoteRetriesInSeconds)
+        while (tries++ < maxTries) {
+            // The remote resource was busy and failed previously
+            SECONDS.sleep(waitBetweenRemoteRetriesInSeconds)
+            response = trueRemoteResource.call(query)
 
-        return trueRemoteResource.call(query)
+            when (response) {
+                is SuccessRemoteResult -> return response
+                is FailureRemoteResult ->
+                    if (!response.isBusy()) return response
+            }
+        }
+
+        return response
     }
 }
