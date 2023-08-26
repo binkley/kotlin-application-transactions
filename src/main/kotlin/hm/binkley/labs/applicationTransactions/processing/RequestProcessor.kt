@@ -56,7 +56,7 @@ class RequestProcessor(
         sharedWithCallers = requestQueue,
         maxWaitForWorkUnitsInSeconds = maxWaitForWorkUnitsInSeconds,
     )
-    private val remoteResource = RemoteResourceWithBusyRetry(
+    private val remoteResource = RemoteResourceWithLinearBusyRetry(
         trueRemoteResource = remoteResource,
         maxTries = 2,
         waitBetweenRemoteRetriesInSeconds = waitBetweenRemoteRetriesInSeconds,

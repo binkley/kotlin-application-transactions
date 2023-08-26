@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit.SECONDS
  * 1. Try the first attempt (which succeeds most times).
  * 2. If the remote resource is busy, try again up to [maxTries].
  */
-class RemoteResourceWithBusyRetry(
+class RemoteResourceWithLinearBusyRetry(
     private val trueRemoteResource: RemoteResource,
     /**
      * How many times to try the remote resource before failing when it is busy.

@@ -3,18 +3,31 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
-internal class RemoteResourceWithBusyRetryTest {
+internal class RemoteResourceWithLinearBusyRetryTest {
+    @Test
+    fun `should require at least 1 try to the remote resource`() {
+        shouldThrow<IllegalArgumentException> {
+            RemoteResourceWithLinearBusyRetry(
+                trueRemoteResource = {
+                    FailureRemoteResult(500, "FAIL", "CONSTRUCTOR FAILED")
+                },
+                maxTries = 0 // This is the problem
+            )
+        }
+    }
+
     @Test
     fun `should succeed on first try`() {
         val remoteResource = TestRecordingRemoteResource { _ ->
             SuccessRemoteResult(200, "READ NAME", "CHARLIE")
         }
-        val manager = RemoteResourceWithBusyRetry(remoteResource)
+        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
 
-        val result = manager.call("READ NAME")
+        val result = withRetry.call("READ NAME")
 
         (result as SuccessRemoteResult).response shouldBe "CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME")
@@ -25,9 +38,9 @@ internal class RemoteResourceWithBusyRetryTest {
         val remoteResource = TestRecordingRemoteResource { query ->
             FailureRemoteResult(400, query, "SYNTAX ERROR: $query")
         }
-        val manager = RemoteResourceWithBusyRetry(remoteResource)
+        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
 
-        val result = manager.call("ABCD PQRSTUV")
+        val result = withRetry.call("ABCD PQRSTUV")
 
         (result as FailureRemoteResult).errorMessage shouldBe
             "SYNTAX ERROR: ABCD PQRSTUV"
@@ -48,9 +61,9 @@ internal class RemoteResourceWithBusyRetryTest {
             }
         }
         val remoteResource = TestRecordingRemoteResource(realRemote)
-        val manager = RemoteResourceWithBusyRetry(remoteResource)
+        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
 
-        val result = manager.call("READ NAME")
+        val result = withRetry.call("READ NAME")
 
         (result as SuccessRemoteResult).response shouldBe "CHARLIE"
         remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
@@ -61,11 +74,28 @@ internal class RemoteResourceWithBusyRetryTest {
         val remoteResource = TestRecordingRemoteResource {
             FailureRemoteResult(429, "SOME DATA", "TRY AGAIN")
         }
-        val manager = RemoteResourceWithBusyRetry(remoteResource)
+        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
 
-        val result = manager.call("READ NAME")
+        val result = withRetry.call("READ NAME")
 
         (result as FailureRemoteResult).isBusy() shouldBe true
         remoteResource.calls shouldBe listOf("READ NAME", "READ NAME")
+    }
+
+    @Test
+    fun `should retry twice when remote stays busy if configured`() {
+        val remoteResource = TestRecordingRemoteResource {
+            FailureRemoteResult(429, "SOME DATA", "TRY AGAIN")
+        }
+        val withRetry = RemoteResourceWithLinearBusyRetry(
+            trueRemoteResource = remoteResource,
+            maxTries = 3
+        )
+
+        val result = withRetry.call("READ NAME")
+
+        (result as FailureRemoteResult).isBusy() shouldBe true
+        remoteResource.calls shouldBe
+            listOf("READ NAME", "READ NAME", "READ NAME")
     }
 }
