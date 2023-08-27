@@ -62,8 +62,9 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = ensureClientDoesNotBlock(request)
+
+        remoteResource.shouldHaveCalledExactlyInOrder() // No calls
         result shouldBe true
-        remoteResource.calls.shouldBeEmpty()
         shouldLogErrors()
     }
 
@@ -76,8 +77,9 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = ensureClientDoesNotBlock(request)
+
+        remoteResource.shouldHaveCalledExactlyInOrder("BAD: ABCD PQRSTUV")
         result should beInstanceOf<FailureRemoteResult>()
-        remoteResource.calls shouldBe listOf("BAD: ABCD PQRSTUV")
         shouldLogErrors()
     }
 
@@ -90,8 +92,9 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = ensureClientDoesNotBlock(request)
+
+        remoteResource.shouldHaveCalledExactlyInOrder("READ NAME")
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
-        remoteResource.calls shouldBe listOf("READ NAME")
     }
 
     @Test
@@ -103,9 +106,9 @@ internal class RequestProcessorTest {
 
         requestQueue.offer(read)
         requestQueue.offer(write)
-
         ensureClientDoesNotBlock(read, write)
-        remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("SLOW LORIS", "WRITE NAME")
     }
 
     @Test
@@ -118,9 +121,9 @@ internal class RequestProcessorTest {
 
         requestQueue.offer(read)
         requestQueue.offer(write)
-
         ensureClientDoesNotBlock(read, write)
-        remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("SLOW LORIS", "WRITE NAME")
     }
 
     @Test
@@ -133,9 +136,9 @@ internal class RequestProcessorTest {
 
         requestQueue.offer(standaloneWrite)
         requestQueue.offer(read)
-
         ensureClientDoesNotBlock(standaloneWrite, read)
-        remoteResource.calls shouldBe listOf("WRITE NAME", "READ NAME IN UOW")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("WRITE NAME", "READ NAME IN UOW")
     }
 
     @Test
@@ -148,8 +151,9 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = ensureClientDoesNotBlock(request)
+
+        remoteResource.shouldHaveCalledExactlyInOrder("READ NAME")
         (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
-        remoteResource.calls shouldBe listOf("READ NAME")
         uow.completed shouldBe true
     }
 
@@ -163,8 +167,9 @@ internal class RequestProcessorTest {
         requestQueue.offer(request)
 
         val result = ensureClientDoesNotBlock(request)
+
+        remoteResource.shouldHaveCalledExactlyInOrder("WRITE NAME")
         (result as SuccessRemoteResult).response shouldBe "WRITE NAME: CHARLIE"
-        remoteResource.calls shouldBe listOf("WRITE NAME")
         uow.completed shouldBe true
     }
 
@@ -180,6 +185,7 @@ internal class RequestProcessorTest {
         requestQueue.offer(simpleRead)
 
         ensureClientDoesNotBlock(workUnitWrite, simpleRead)
+
         remoteResource.calls shouldBe listOf("BAD THING", "READ NAME")
         uow.completed shouldBe false
         shouldLogErrors()
@@ -201,7 +207,8 @@ internal class RequestProcessorTest {
         SECONDS.sleep(1)
 
         ensureClientDoesNotBlock(workUnit, pending)
-        remoteResource.calls shouldBe listOf("WRITE NAME", "FAVORITE COLOR")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("WRITE NAME", "FAVORITE COLOR")
         uow.completed shouldBe false
         shouldLogErrors()
     }
@@ -225,8 +232,9 @@ internal class RequestProcessorTest {
         // to ensure that it runs after all writes complete.
 
         ensureClientDoesNotBlock(writeWorkUnit, readWorkUnit, interleaved)
-        uow.completed shouldBe true
+
         remoteResource.calls.removeFirst() shouldBe "WRITE NAME"
+        uow.completed shouldBe true
         remoteResource.calls shouldContainOnly
             setOf("FAVORITE COLOR", "READ NAME")
     }
@@ -567,3 +575,7 @@ internal class RequestProcessorTest {
     private fun ensureClientDoesNotBlock(request: CancelUnitOfWork) =
         request.result.get()
 }
+
+private fun TestRecordingRemoteResource.shouldHaveCalledExactlyInOrder(
+    vararg queries: String
+) = this.calls shouldBe queries.toList()
