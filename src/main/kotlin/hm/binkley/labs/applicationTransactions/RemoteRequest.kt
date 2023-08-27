@@ -36,6 +36,16 @@ data class OneRead(
     override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
 ) : RemoteRequest, RemoteQuery
 
+/**
+ * A single write request outside a unit of work.
+ * Remotely, it waits for reads to complete, and blocks other reads and writes
+ * (including those in a unit of work).
+ */
+data class OneWrite(
+    override val query: String,
+    override val result: CompletableFuture<RemoteResult> = CompletableFuture(),
+) : RemoteRequest, RemoteQuery
+
 sealed interface UnitOfWorkScope {
     /** Common for all requests in the same unit of work. */
     val id: UUID

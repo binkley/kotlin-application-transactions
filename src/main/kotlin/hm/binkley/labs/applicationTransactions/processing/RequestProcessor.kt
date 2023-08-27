@@ -3,6 +3,7 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
+import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
@@ -81,6 +82,8 @@ class RequestProcessor(
                  * These are blocking, run serial, and run on this thread
                  */
 
+                is OneWrite -> runSerialExclusiveOfOtherRequests(request)
+
                 // Canceling a unit of work before any reads/writes sent
                 is CancelUnitOfWork -> cancelUnitOfWorkWithoutWork(request)
 
@@ -98,7 +101,7 @@ class RequestProcessor(
      * If timing out waiting for readers to complete, does not execute the
      * write request.
      */
-    private fun runExclusive(request: RemoteQuery) =
+    private fun runSerialExclusiveOfOtherRequests(request: RemoteQuery) =
         when {
             waitForReadersToComplete() -> respondToClient(request)
             else -> readersDidNotFinishInTime(request)
@@ -136,7 +139,7 @@ class RequestProcessor(
                 }
 
                 is WriteWorkUnit -> {
-                    val result = runExclusive(currentWork)
+                    val result = runSerialExclusiveOfOtherRequests(currentWork)
                     if (result is FailureRemoteResult) {
                         return
                     }

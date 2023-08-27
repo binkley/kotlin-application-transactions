@@ -3,6 +3,7 @@ package hm.binkley.labs.applicationTransactions.processing
 import hm.binkley.labs.applicationTransactions.CancelUnitOfWork
 import hm.binkley.labs.applicationTransactions.FailureRemoteResult
 import hm.binkley.labs.applicationTransactions.OneRead
+import hm.binkley.labs.applicationTransactions.OneWrite
 import hm.binkley.labs.applicationTransactions.ReadWorkUnit
 import hm.binkley.labs.applicationTransactions.RemoteQuery
 import hm.binkley.labs.applicationTransactions.RemoteRequest
@@ -94,7 +95,21 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    fun `should wait for reads to finish before writing`() {
+    fun `should wait for reads to finish before writing standalone`() {
+        val remoteResource = runSlowRequestProcessor()
+
+        val read = OneRead("SLOW LORIS")
+        val write = OneWrite("WRITE NAME")
+
+        requestQueue.offer(read)
+        requestQueue.offer(write)
+
+        ensureClientDoesNotBlock(read, write)
+        remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
+    }
+
+    @Test
+    fun `should wait for reads to finish before writing in a unit of work`() {
         val remoteResource = runSlowRequestProcessor()
 
         val read = OneRead("SLOW LORIS")
@@ -106,6 +121,21 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(read, write)
         remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
+    }
+
+    @Test
+    fun `should wait for writes to finish before a unit of work`() {
+        val remoteResource = runRequestProcessor()
+
+        val standaloneWrite = OneWrite("WRITE NAME")
+        val uow = UnitOfWork(1)
+        val read = uow.readOne("READ NAME IN UOW")
+
+        requestQueue.offer(standaloneWrite)
+        requestQueue.offer(read)
+
+        ensureClientDoesNotBlock(standaloneWrite, read)
+        remoteResource.calls shouldBe listOf("WRITE NAME", "READ NAME IN UOW")
     }
 
     @Test
