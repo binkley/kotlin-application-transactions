@@ -94,21 +94,6 @@ internal class RequestProcessorTest {
     }
 
     @Test
-    fun `should process work unit reads`() {
-        val remoteResource = runRequestProcessor()
-
-        val uow = UnitOfWork(1)
-        val request = uow.readOne("READ NAME")
-
-        requestQueue.offer(request)
-
-        val result = ensureClientDoesNotBlock(request)
-        (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
-        remoteResource.calls shouldBe listOf("READ NAME")
-        uow.completed shouldBe true
-    }
-
-    @Test
     fun `should wait for reads to finish before writing`() {
         val remoteResource = runSlowRequestProcessor()
 
@@ -121,6 +106,21 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(read, write)
         remoteResource.calls shouldBe listOf("SLOW LORIS", "WRITE NAME")
+    }
+
+    @Test
+    fun `should process work unit reads`() {
+        val remoteResource = runRequestProcessor()
+
+        val uow = UnitOfWork(1)
+        val request = uow.readOne("READ NAME")
+
+        requestQueue.offer(request)
+
+        val result = ensureClientDoesNotBlock(request)
+        (result as SuccessRemoteResult).response shouldBe "READ NAME: CHARLIE"
+        remoteResource.calls shouldBe listOf("READ NAME")
+        uow.completed shouldBe true
     }
 
     @Test
