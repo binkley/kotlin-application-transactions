@@ -38,8 +38,8 @@ class RemoteResourceWithLinearBusyRetry(
      * [waitBetweenRemoteRetriesInSeconds] seconds between retries.
      */
     override fun call(query: String): RemoteResult {
-        var tries = 1
         var response = trueRemoteResource.call(query)
+        var tries = 1
 
         when (response) {
             is SuccessRemoteResult -> return response
