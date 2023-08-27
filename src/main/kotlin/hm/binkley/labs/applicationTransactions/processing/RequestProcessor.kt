@@ -59,7 +59,7 @@ class RequestProcessor(
     private val remoteResource = RemoteResourceWithLinearBusyRetry(
         trueRemoteResource = remoteResource,
         maxTries = 2,
-        waitBetweenRemoteRetriesInSeconds = waitBetweenRemoteRetriesInSeconds,
+        waitBetweenRetriesInSeconds = waitBetweenRemoteRetriesInSeconds,
     )
 
     /**

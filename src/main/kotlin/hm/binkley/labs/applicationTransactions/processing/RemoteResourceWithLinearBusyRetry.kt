@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 /**
  * An implementation of [RemoteResource] providing _policy_ for retrying
  * a "true remote resource" when it is busy assuming a constant pause between
- * retries (see [waitBetweenRemoteRetriesInSeconds].
+ * retries (see [waitBetweenRetriesInSeconds].
  *
  * The retry policy is simple:
  * 1. Try the first attempt (which succeeds most times).
@@ -20,12 +20,12 @@ class RemoteResourceWithLinearBusyRetry(
      * How many times to try the remote resource before failing when it is busy.
      * The default is to try twice.
      */
-    private val maxTries: Int = 2,
+    val maxTries: Int = 2,
     /**
      * How long to wait for the remote resource to become idle.
      * The default is to wait 1 second.
      */
-    private val waitBetweenRemoteRetriesInSeconds: Long = 1L,
+    val waitBetweenRetriesInSeconds: Long = 1L,
 ) : RemoteResource {
     init {
         require(0 < maxTries) {
@@ -35,7 +35,7 @@ class RemoteResourceWithLinearBusyRetry(
 
     /**
      * Retry a busy remote resource, pausing
-     * [waitBetweenRemoteRetriesInSeconds] seconds between retries.
+     * [waitBetweenRetriesInSeconds] seconds between retries.
      */
     override fun call(query: String): RemoteResult {
         var response = trueRemoteResource.call(query)
@@ -47,10 +47,11 @@ class RemoteResourceWithLinearBusyRetry(
                 if (!response.isBusy()) return response
         }
 
-        while (tries++ < maxTries) {
+        while (tries < maxTries) {
             // The remote resource was busy and failed previously
-            SECONDS.sleep(waitBetweenRemoteRetriesInSeconds)
+            SECONDS.sleep(waitBetweenRetriesInSeconds)
             response = trueRemoteResource.call(query)
+            ++tries
 
             when (response) {
                 is SuccessRemoteResult -> return response

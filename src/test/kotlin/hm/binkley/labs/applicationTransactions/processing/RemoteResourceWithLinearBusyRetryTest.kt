@@ -7,6 +7,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
+private const val successResultValue = "CHARLIE"
+private const val badSyntaxQuery = "ABCD PQRSTUV"
+
 internal class RemoteResourceWithLinearBusyRetryTest {
     @Test
     fun `should require at least 1 try to the remote resource`() {
@@ -21,56 +24,86 @@ internal class RemoteResourceWithLinearBusyRetryTest {
     }
 
     @Test
-    fun `should succeed on first try`() {
+    fun `should default to 2 tries and 1 second between retries`() {
+        val withRetry = RemoteResourceWithLinearBusyRetry(
+            recordingRemoteResourceAlwaysSucceeds()
+        )
+
+        withRetry.maxTries shouldBe 2
+        withRetry.waitBetweenRetriesInSeconds shouldBe 1
+    }
+
+    @Test
+    fun `should succeed on first try as is expected in the usual case`() {
         val remoteResource = recordingRemoteResourceAlwaysSucceeds()
         val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
         val query = "READ NAME"
 
         val result = withRetry.call(query)
 
-        remoteResource.calls shouldBe listOf(query)
-        (result as SuccessRemoteResult).response shouldBe "CHARLIE"
+        remoteResource.shouldHaveCalledExactlyInOrder(query)
+        result.shouldBeSuccessResult()
     }
 
     @Test
-    fun `should fail on first try`() {
+    fun `should fail on first try even when configured for retry`() {
         val remoteResource = recordingRemoteResourceAlwaysErrors()
-        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
-        val query = "ABCD PQRSTUV"
+        val withRetry = RemoteResourceWithLinearBusyRetry(
+            trueRemoteResource = remoteResource,
+            maxTries = 2,
+        )
+        val query = badSyntaxQuery
 
         val result = withRetry.call(query)
 
-        remoteResource.calls shouldBe listOf(query)
-        (result as FailureRemoteResult).errorMessage shouldBe
-            "BAD SYNTAX: $query"
+        remoteResource.shouldHaveCalledExactlyInOrder(query)
+        result.shouldBeBadSyntaxFailure()
     }
 
     @Test
-    fun `should retry when busy and then succeed`() {
-        val remoteResource = recordingRemoteResourceBusyThenFree()
+    fun `should fail on first try then succeed on retry`() {
+        val remoteResource = recordingRemoteResourceBusyThenSucceeds()
         val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
         val query = "READ NAME"
 
         val result = withRetry.call(query)
 
-        remoteResource.calls shouldBe listOf(query, query)
-        (result as SuccessRemoteResult).response shouldBe "CHARLIE"
+        remoteResource.shouldHaveCalledExactlyInOrder(query, query)
+        result.shouldBeSuccessResult()
     }
 
     @Test
-    fun `should retry while remote is busy and still fail`() {
+    fun `should fail busy remote after one try`() {
         val remoteResource = recordingRemoteResourceAlwaysBusy()
-        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
+        val withRetry = RemoteResourceWithLinearBusyRetry(
+            trueRemoteResource = remoteResource,
+            maxTries = 1
+        )
         val query = "READ NAME"
 
         val result = withRetry.call(query)
 
-        remoteResource.calls shouldBe listOf(query, query)
-        (result as FailureRemoteResult).isBusy() shouldBe true
+        remoteResource.shouldHaveCalledExactlyInOrder(query)
+        result.shouldBeBusyFailure()
     }
 
     @Test
-    fun `should retry several times when remote stays busy if configured`() {
+    fun `should fail busy remote after two tries`() {
+        val remoteResource = recordingRemoteResourceAlwaysBusy()
+        val withRetry = RemoteResourceWithLinearBusyRetry(
+            trueRemoteResource = remoteResource,
+            maxTries = 2
+        )
+        val query = "READ NAME"
+
+        val result = withRetry.call(query)
+
+        remoteResource.shouldHaveCalledExactlyInOrder(query, query)
+        result.shouldBeBusyFailure()
+    }
+
+    @Test
+    fun `should fail busy remote after many tries`() {
         val remoteResource = recordingRemoteResourceAlwaysBusy()
         val withRetry = RemoteResourceWithLinearBusyRetry(
             trueRemoteResource = remoteResource,
@@ -80,18 +113,31 @@ internal class RemoteResourceWithLinearBusyRetryTest {
 
         val result = withRetry.call(query)
 
-        remoteResource.calls shouldBe listOf(query, query, query)
-        (result as FailureRemoteResult).isBusy() shouldBe true
+        remoteResource.shouldHaveCalledExactlyInOrder(query, query, query)
+        result.shouldBeBusyFailure()
+    }
+
+    @Test
+    fun `should retry busy remote and get an error`() {
+        val remoteResource = recordingRemoteResourceBusyThenError()
+        val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
+        val query = badSyntaxQuery
+
+        val result = withRetry.call(query)
+
+        remoteResource.shouldHaveCalledExactlyInOrder(query, query)
+        result.shouldBeBadSyntaxFailure()
     }
 }
 
 private fun recordingRemoteResourceAlwaysSucceeds() =
     TestRecordingRemoteResource { query ->
-        SuccessRemoteResult(200, query, "CHARLIE")
+        SuccessRemoteResult(200, query, successResultValue)
     }
 
 private fun recordingRemoteResourceAlwaysErrors() =
     TestRecordingRemoteResource { query ->
+        require(badSyntaxQuery == query)
         FailureRemoteResult(400, query, "BAD SYNTAX: $query")
     }
 
@@ -100,7 +146,7 @@ private fun recordingRemoteResourceAlwaysBusy() =
         FailureRemoteResult(429, query, "TRY AGAIN")
     }
 
-private fun recordingRemoteResourceBusyThenFree() =
+private fun recordingRemoteResourceBusyThenSucceeds() =
     TestRecordingRemoteResource(object : RemoteResource {
         private var busy = true
         override fun call(query: String): RemoteResult {
@@ -108,7 +154,34 @@ private fun recordingRemoteResourceBusyThenFree() =
                 busy = false
                 FailureRemoteResult(429, query, "TRY AGAIN")
             } else {
-                SuccessRemoteResult(200, query, "CHARLIE")
+                SuccessRemoteResult(200, query, successResultValue)
             }
         }
     })
+
+private fun recordingRemoteResourceBusyThenError() =
+    TestRecordingRemoteResource(object : RemoteResource {
+        private var busy = true
+        override fun call(query: String): RemoteResult {
+            return if (busy) {
+                busy = false
+                FailureRemoteResult(429, query, "TRY AGAIN")
+            } else {
+                FailureRemoteResult(400, query, "BAD SYNTAX: $query")
+            }
+        }
+    })
+
+private fun TestRecordingRemoteResource.shouldHaveCalledExactlyInOrder(
+    vararg queries: String
+) = this.calls shouldBe queries.toList()
+
+private fun RemoteResult.shouldBeSuccessResult() =
+    (this as SuccessRemoteResult).response shouldBe successResultValue
+
+private fun RemoteResult.shouldBeBadSyntaxFailure() =
+    (this as FailureRemoteResult).errorMessage shouldBe
+        "BAD SYNTAX: $badSyntaxQuery"
+
+private fun RemoteResult.shouldBeBusyFailure() =
+    (this as FailureRemoteResult).isBusy() shouldBe true
