@@ -58,7 +58,7 @@ internal class RemoteResourceWithLinearBusyRetryTest {
     }
 
     @Test
-    fun `should retry while remote is busy and fail`() {
+    fun `should retry while remote is busy and still fail`() {
         val remoteResource = recordingRemoteResourceAlwaysBusy()
         val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
         val query = "READ NAME"
@@ -70,7 +70,7 @@ internal class RemoteResourceWithLinearBusyRetryTest {
     }
 
     @Test
-    fun `should retry twice when remote stays busy if configured`() {
+    fun `should retry several times when remote stays busy if configured`() {
         val remoteResource = recordingRemoteResourceAlwaysBusy()
         val withRetry = RemoteResourceWithLinearBusyRetry(
             trueRemoteResource = remoteResource,
