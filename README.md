@@ -102,7 +102,7 @@ abstractions that need translation into:
   busy-retry) and when searching for a middle matching element
 - A means for exclusive access to the remote resource
 - Callers and tests can wait on completion of submitted work
-- Thread management so that writers can wait for readers to complete
+- Thread management such that writers can wait for readers to complete
 
 ## Design
 
