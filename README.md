@@ -83,7 +83,7 @@ Important problems to handle when multiple clients update a remote data source:
 
 This project demonstrates one approach to application-side transactions.
 To keep the example within a single local process, there are some
-abstractions that need translation into an actual distributed scenario:
+abstractions that need translation into:
 
 - Clients &mdash; treated as separate local threads: in a true distributed
   scenario these would be multiple processes
@@ -94,7 +94,7 @@ abstractions that need translation into an actual distributed scenario:
 - This project _does not_ address distributed transactions; it assumes a
   _single_ remote data source service
 
-### Minimally assumed abstractions
+### Minimally assumed code library support
 
 - A searchable, concurrent-safe queue for submitting requests for remote
   processing
@@ -102,6 +102,7 @@ abstractions that need translation into an actual distributed scenario:
   busy-retry) and when searching for a middle matching element
 - A means for exclusive access to the remote resource
 - Callers and tests can wait on completion of submitted work
+- Thread management so that writers can wait for readers to complete
 
 ## Design
 
