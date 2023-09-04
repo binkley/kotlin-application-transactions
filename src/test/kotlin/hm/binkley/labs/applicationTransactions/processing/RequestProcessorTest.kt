@@ -11,7 +11,6 @@ import hm.binkley.labs.applicationTransactions.RemoteResult
 import hm.binkley.labs.applicationTransactions.SuccessRemoteResult
 import hm.binkley.labs.applicationTransactions.WriteWorkUnit
 import hm.binkley.labs.applicationTransactions.client.UnitOfWork
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainOnly
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.should
@@ -108,7 +107,10 @@ internal class RequestProcessorTest {
         requestQueue.offer(write)
         ensureClientDoesNotBlock(read, write)
 
-        remoteResource.shouldHaveCalledExactlyInOrder("SLOW LORIS", "WRITE NAME")
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "SLOW LORIS",
+            "WRITE NAME"
+        )
     }
 
     @Test
@@ -123,7 +125,10 @@ internal class RequestProcessorTest {
         requestQueue.offer(write)
         ensureClientDoesNotBlock(read, write)
 
-        remoteResource.shouldHaveCalledExactlyInOrder("SLOW LORIS", "WRITE NAME")
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "SLOW LORIS",
+            "WRITE NAME"
+        )
     }
 
     @Test
@@ -138,7 +143,10 @@ internal class RequestProcessorTest {
         requestQueue.offer(read)
         ensureClientDoesNotBlock(standaloneWrite, read)
 
-        remoteResource.shouldHaveCalledExactlyInOrder("WRITE NAME", "READ NAME IN UOW")
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "WRITE NAME",
+            "READ NAME IN UOW"
+        )
     }
 
     @Test
@@ -208,7 +216,10 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(workUnit, pending)
 
-        remoteResource.shouldHaveCalledExactlyInOrder("WRITE NAME", "FAVORITE COLOR")
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "WRITE NAME",
+            "FAVORITE COLOR"
+        )
         uow.completed shouldBe false
         shouldLogErrors()
     }
@@ -269,7 +280,7 @@ internal class RequestProcessorTest {
         )
         uowA.completed shouldBe true
         uowB.completed shouldBe true
-        remoteResource.calls shouldBe listOf(
+        remoteResource.shouldHaveCalledExactlyInOrder(
             "[A] READ NAME",
             "[A] WRITE NAME",
             "[B] READ NAME",
@@ -290,7 +301,8 @@ internal class RequestProcessorTest {
         requestQueue.offer(cancel)
 
         ensureClientDoesNotBlock(cancel) shouldBe true
-        remoteResource.calls shouldBe listOf("FAVORITE COLOR")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("FAVORITE COLOR")
         uow.completed shouldBe true
     }
 
@@ -310,7 +322,10 @@ internal class RequestProcessorTest {
         ensureClientDoesNotBlock(read)
         ensureClientDoesNotBlock(abort) shouldBe true
 
-        remoteResource.calls shouldBe listOf("READ NAME", "UNDO RENAME")
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "READ NAME",
+            "UNDO RENAME"
+        )
         uow.completed shouldBe true
     }
 
@@ -327,7 +342,11 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(read)
         ensureClientDoesNotBlock(abort) shouldBe false // Undo failed
-        remoteResource.calls shouldBe listOf("READ NAME", "BAD: ABCD PQRSTUV")
+
+        remoteResource.shouldHaveCalledExactlyInOrder(
+            "READ NAME",
+            "BAD: ABCD PQRSTUV"
+        )
         uow.completed shouldBe true
         shouldLogErrors()
     }
@@ -347,68 +366,77 @@ internal class RequestProcessorTest {
         requestQueue.offer(martian)
 
         val martianResult = ensureClientDoesNotBlock(martian)
+
+        remoteResource.shouldHaveCalledExactlyInOrder() // Should be none
         martianResult should beInstanceOf<FailureRemoteResult>()
-        remoteResource.calls.shouldBeEmpty()
         shouldLogErrors()
     }
 
     @Test
-    fun `should fail abandon when out of step with previous work units`() {
-        runRequestProcessor()
+    fun `should fail cancel when out of step with previous work units`() {
+        val remoteResource = runRequestProcessor()
 
-        val expectedUnits = 3
-        val uow = UnitOfWork(expectedUnits)
-        val badAbandon = CancelUnitOfWork(
+        val uow = UnitOfWork(3)
+        val goodUowQuery = uow.writeOne("CHANGE NAME")
+        val badUowCancel = CancelUnitOfWork(
             uow.id,
-            expectedUnits - 1, // What the test really checks
+            2, // What the test really checks
         )
 
-        requestQueue.offer(uow.writeOne("CHANGE NAME"))
-        requestQueue.offer(badAbandon)
+        requestQueue.offer(goodUowQuery)
+        requestQueue.offer(badUowCancel)
 
-        ensureClientDoesNotBlock(badAbandon) shouldBe false
+        ensureClientDoesNotBlock(badUowCancel) shouldBe false
+
+        remoteResource.shouldHaveCalledExactlyInOrder("CHANGE NAME")
         uow.completed shouldBe false
         shouldLogErrors()
     }
 
     @Test
     fun `should fail read when out of step with previous work units`() {
-        runRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val uow = UnitOfWork(3)
-        val badQuery = ReadWorkUnit(
+        val goodUowQuery = uow.writeOne("READ NAME")
+        val badUowQuery = ReadWorkUnit(
             uow.id,
             2, // What the test really checks
             uow.expectedUnits,
-            "READ NAME",
+            "BAD QUERY",
         )
 
-        requestQueue.offer(uow.writeOne("CHANGE NAME"))
-        requestQueue.offer(badQuery)
+        requestQueue.offer(goodUowQuery)
+        requestQueue.offer(badUowQuery)
 
-        ensureClientDoesNotBlock(badQuery) should
+        ensureClientDoesNotBlock(badUowQuery) should
             beInstanceOf<FailureRemoteResult>()
+
+        remoteResource.shouldHaveCalledExactlyInOrder("READ NAME")
         uow.completed shouldBe false
         shouldLogErrors()
     }
 
     @Test
     fun `should fail write when out of step with previous work units`() {
-        runRequestProcessor()
+        val remoteResource = runRequestProcessor()
 
         val uow = UnitOfWork(3)
-        val badQuery = WriteWorkUnit(
+        val goodUowQuery = uow.writeOne("CHANGE NAME")
+        val badUowQuery = WriteWorkUnit(
             uow.id,
             2, // What the test really checks
             uow.expectedUnits,
-            "CHANGE NAME",
+            "BAD QUERY",
         )
 
-        requestQueue.offer(uow.writeOne("CHANGE NAME"))
-        requestQueue.offer(badQuery)
+        requestQueue.offer(goodUowQuery)
+        requestQueue.offer(badUowQuery)
 
-        ensureClientDoesNotBlock(badQuery) should
+        ensureClientDoesNotBlock(badUowQuery) should
             beInstanceOf<FailureRemoteResult>()
+
+        remoteResource.shouldHaveCalledExactlyInOrder("CHANGE NAME")
         uow.completed shouldBe false
         shouldLogErrors()
     }
@@ -429,7 +457,8 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(martian) should
             beInstanceOf<FailureRemoteResult>()
-        remoteResource.calls.shouldBeEmpty()
+
+        remoteResource.shouldHaveCalledExactlyInOrder() // Should be none
         uow.completed shouldBe false
         shouldLogErrors()
     }
@@ -446,9 +475,10 @@ internal class RequestProcessorTest {
         requestQueue.offer(write)
 
         val writeResult = ensureClientDoesNotBlock(write)
+
+        remoteResource.shouldHaveCalledExactlyInOrder("READ NAME")
         writeResult.shouldBeInstanceOf<FailureRemoteResult>()
         writeResult.status shouldBe 504 // Gateway timeout
-        remoteResource.calls shouldBe listOf("READ NAME")
         shouldLogErrors()
     }
 
@@ -465,7 +495,8 @@ internal class RequestProcessorTest {
 
         ensureClientDoesNotBlock(read)
         ensureClientDoesNotBlock(cancel) shouldBe false
-        remoteResource.calls shouldBe listOf("READ NAME")
+
+        remoteResource.shouldHaveCalledExactlyInOrder("READ NAME")
         shouldLogErrors()
     }
 
