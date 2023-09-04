@@ -68,7 +68,8 @@ Important problems to handle when multiple clients update a remote data source:
   If no write happens, then all reads are idempotent
 * Writes happen in serial.
   Writes do not step on each other, and no reads happen while writing
-* Units of work never interleave or overlap
+* Units of work never interleave or overlap (units of work are collections of
+  reads/writes that should have isolation from others)
 
 ### Key terms
 
