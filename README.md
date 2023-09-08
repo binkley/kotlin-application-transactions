@@ -6,6 +6,7 @@ align="right" width="20%" height="auto"/>
 # Kotlin Application Transactions
 
 [![build](https://github.com/binkley/kotlin-application-transactions/workflows/build/badge.svg)](https://github.com/binkley/kotlin-application-transactions/actions)
+[![coverage](https://github.com/binkley/kotlin-application-transactions/raw/master/images/jacoco.svg)](https://github.com/binkley/kotlin-application-transactions/actions/workflows/ci.yml)
 [![issues](https://img.shields.io/github/issues/binkley/kotlin-application-transactions.svg)](https://github.com/binkley/kotlin-application-transactions/issues/)
 [![pull requests](https://img.shields.io/github/issues-pr/binkley/kotlin-application-transactions.svg)](https://github.com/binkley/kotlin-application-transactions/pulls)
 [![vulnerabilities](https://snyk.io/test/github/binkley/kotlin-application-transactions/badge.svg)](https://snyk.io/test/github/binkley/kotlin-application-transactions)
