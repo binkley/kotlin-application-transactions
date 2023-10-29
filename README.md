@@ -12,9 +12,11 @@ align="right" width="20%" height="auto"/>
 [![vulnerabilities](https://snyk.io/test/github/binkley/kotlin-application-transactions/badge.svg)](https://snyk.io/test/github/binkley/kotlin-application-transactions)
 [![license](https://img.shields.io/badge/license-Public%20Domain-blue.svg)](http://unlicense.org/)
 
-Experiment with application-side transactions.
+Experiment with application-side transactions.<br>
 This project is not specific to Kotlin, and would translate well into C# or
 Python given suitable abstractions.
+One production project at a major company has turned this into a C#
+implementation.
 
 This is also a good project to copy as a Kotlin starter following [modern JVM
 build practices](https://github.com/binkley/modern-java-practices).
@@ -44,6 +46,9 @@ Try `./batect run` for a demonstration as CI would.
 Not all remote data sources provide transactions, yet clients wish to have
 exclusive access for limited periods of time to ensure consistency across
 multiple related operations.
+Important is to lean on transaction support for remote systems, and fall back
+to application-side transactions only to address shortcomings:
+Managing transactions in your program creates challenges and corner cases.
 
 Important problems to handle when multiple clients update a remote data source:
 
