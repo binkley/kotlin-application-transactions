@@ -41,25 +41,23 @@ class SearchableBlockingQueue<T : Any>(
             private val sharedItr = shared.iterator()
             private var lookingAtSpillover = true
 
-            override fun hasNext(): Boolean =
-                if (lookingAtSpillover) {
-                    val hasNext = spilloverItr.hasNext()
-                    if (hasNext) {
-                        true
-                    } else {
-                        lookingAtSpillover = false
-                        hasNext()
-                    }
+            override fun hasNext(): Boolean = if (lookingAtSpillover) {
+                val hasNext = spilloverItr.hasNext()
+                if (hasNext) {
+                    true
                 } else {
-                    sharedItr.hasNext()
+                    lookingAtSpillover = false
+                    hasNext()
                 }
+            } else {
+                sharedItr.hasNext()
+            }
 
-            override fun next(): T =
-                if (lookingAtSpillover) {
-                    spilloverItr.next()
-                } else {
-                    sharedItr.next()
-                }
+            override fun next(): T = if (lookingAtSpillover) {
+                spilloverItr.next()
+            } else {
+                sharedItr.next()
+            }
 
             override fun remove() {
                 if (lookingAtSpillover) {
@@ -73,19 +71,17 @@ class SearchableBlockingQueue<T : Any>(
         }
     }
 
-    override fun peek(): T =
-        if (spillover.isNotEmpty()) {
-            spillover.first()
-        } else {
-            shared.peek()
-        }
+    override fun peek(): T = if (spillover.isNotEmpty()) {
+        spillover.first()
+    } else {
+        shared.peek()
+    }
 
-    override fun poll(): T? =
-        if (spillover.isNotEmpty()) {
-            spillover.removeFirst()
-        } else {
-            shared.poll()
-        }
+    override fun poll(): T? = if (spillover.isNotEmpty()) {
+        spillover.removeFirst()
+    } else {
+        shared.poll()
+    }
 
     override fun poll(timeout: Long, unit: TimeUnit): T? =
         if (spillover.isNotEmpty()) {
@@ -130,12 +126,11 @@ class SearchableBlockingQueue<T : Any>(
         return null
     }
 
-    override fun take(): T =
-        if (spillover.isNotEmpty()) {
-            spillover.removeFirst()
-        } else {
-            shared.take()
-        }
+    override fun take(): T = if (spillover.isNotEmpty()) {
+        spillover.removeFirst()
+    } else {
+        shared.take()
+    }
 
     /**
      * Remaining capacity is defined by the shared [BlockingQueue].

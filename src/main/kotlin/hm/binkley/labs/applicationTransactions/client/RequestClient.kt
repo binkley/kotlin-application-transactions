@@ -59,7 +59,9 @@ class RequestClient(private val requestQueue: BlockingQueue<RemoteRequest>) {
         override fun close() = uow.close()
     }
 
-    private fun <T> runRequest(request: T): String
+    private fun <T> runRequest(
+        request: T
+    ): String
         where T : RemoteRequest,
               T : RemoteQuery {
         requestQueue.offer(request)

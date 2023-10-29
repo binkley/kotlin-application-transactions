@@ -7,8 +7,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
-private const val successResultValue = "CHARLIE"
-private const val badSyntaxQuery = "ABCD PQRSTUV"
+private const val SUCCESS_RESULT_VALUE = "CHARLIE"
+private const val BAD_SYNTAX_QUERY = "ABCD PQRSTUV"
 
 internal class RemoteResourceWithLinearBusyRetryTest {
     @Test
@@ -52,7 +52,7 @@ internal class RemoteResourceWithLinearBusyRetryTest {
             trueRemoteResource = remoteResource,
             maxTries = 2,
         )
-        val query = badSyntaxQuery
+        val query = BAD_SYNTAX_QUERY
 
         val result = withRetry.call(query)
 
@@ -121,7 +121,7 @@ internal class RemoteResourceWithLinearBusyRetryTest {
     fun `should retry busy remote and get an error`() {
         val remoteResource = recordingRemoteResourceBusyThenError()
         val withRetry = RemoteResourceWithLinearBusyRetry(remoteResource)
-        val query = badSyntaxQuery
+        val query = BAD_SYNTAX_QUERY
 
         val result = withRetry.call(query)
 
@@ -132,12 +132,12 @@ internal class RemoteResourceWithLinearBusyRetryTest {
 
 private fun recordingRemoteResourceAlwaysSucceeds() =
     TestRecordingRemoteResource { query ->
-        SuccessRemoteResult(200, query, successResultValue)
+        SuccessRemoteResult(200, query, SUCCESS_RESULT_VALUE)
     }
 
 private fun recordingRemoteResourceAlwaysErrors() =
     TestRecordingRemoteResource { query ->
-        require(badSyntaxQuery == query)
+        require(BAD_SYNTAX_QUERY == query)
         FailureRemoteResult(400, query, "BAD SYNTAX: $query")
     }
 
@@ -154,7 +154,7 @@ private fun recordingRemoteResourceBusyThenSucceeds() =
                 busy = false
                 FailureRemoteResult(429, query, "TRY AGAIN")
             } else {
-                SuccessRemoteResult(200, query, successResultValue)
+                SuccessRemoteResult(200, query, SUCCESS_RESULT_VALUE)
             }
         }
     })
@@ -177,11 +177,11 @@ private fun TestRecordingRemoteResource.shouldHaveCalledExactlyInOrder(
 ) = this.calls shouldBe queries.toList()
 
 private fun RemoteResult.shouldBeSuccessResult() =
-    (this as SuccessRemoteResult).response shouldBe successResultValue
+    (this as SuccessRemoteResult).response shouldBe SUCCESS_RESULT_VALUE
 
 private fun RemoteResult.shouldBeBadSyntaxFailure() =
     (this as FailureRemoteResult).errorMessage shouldBe
-        "BAD SYNTAX: $badSyntaxQuery"
+        "BAD SYNTAX: $BAD_SYNTAX_QUERY"
 
 private fun RemoteResult.shouldBeBusyFailure() =
     (this as FailureRemoteResult).isBusy() shouldBe true

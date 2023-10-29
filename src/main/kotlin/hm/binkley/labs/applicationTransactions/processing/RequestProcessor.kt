@@ -101,11 +101,10 @@ class RequestProcessor(
      * If timing out waiting for readers to complete, does not execute the
      * write request.
      */
-    private fun runSerialExclusiveOfOtherRequests(request: RemoteQuery) =
-        when {
-            waitForReadersToComplete() -> respondToClient(request)
-            else -> readersDidNotFinishInTime(request)
-        }
+    private fun runSerialExclusiveOfOtherRequests(request: RemoteQuery) = when {
+        waitForReadersToComplete() -> respondToClient(request)
+        else -> readersDidNotFinishInTime(request)
+    }
 
     private fun cancelUnitOfWorkWithoutWork(request: CancelUnitOfWork) {
         logBadWorkUnit(request)
@@ -180,11 +179,10 @@ class RequestProcessor(
      * However, as reads run in parallel, writes should wait for them to
      * complete (all reads run from the pool of reader threads).
      */
-    private fun waitForReadersToComplete() =
-        readerThreads.awaitCompletion(
-            maxWaitForRemoteResourceInSeconds,
-            SECONDS
-        )
+    private fun waitForReadersToComplete() = readerThreads.awaitCompletion(
+        maxWaitForRemoteResourceInSeconds,
+        SECONDS
+    )
 
     /**
      * Checks for a work unit not part of the current unit of work.
@@ -249,8 +247,9 @@ class RequestProcessor(
         request.result.complete(outcome)
     }
 
-    private fun readersDidNotFinishInTime(request: RemoteQuery):
-        FailureRemoteResult {
+    private fun readersDidNotFinishInTime(
+        request: RemoteQuery
+    ): FailureRemoteResult {
         logSlowReaders()
 
         val result = remoteResultTimeout(maxWaitForRemoteResourceInSeconds)
@@ -308,9 +307,8 @@ private fun respondToClientWithBug(
 }
 
 /** Returns a failure when the remote resource times out. */
-private fun remoteResultTimeout(timeout: Long) =
-    FailureRemoteResult(
-        status = 504,
-        query = "READ", // The exact query is in another thread and unknown
-        errorMessage = "Timeout for a read after $timeout seconds",
-    )
+private fun remoteResultTimeout(timeout: Long) = FailureRemoteResult(
+    status = 504,
+    query = "READ", // The exact query is in another thread and unknown
+    errorMessage = "Timeout for a read after $timeout seconds",
+)
