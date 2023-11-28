@@ -46,7 +46,7 @@
               easily accessed -->
         <coverage.mutation>91</coverage.mutation>
         <dependency-check-maven.version>8.4.2</dependency-check-maven.version>
-        <detekt-maven-plugin.version>1.23.3.1</detekt-maven-plugin.version>
+        <detekt-maven-plugin.version>1.23.4</detekt-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
         <java.charset>UTF-8</java.charset>
         <jdk.version>17</jdk.version>
