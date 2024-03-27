@@ -78,13 +78,25 @@ Important problems to handle when multiple clients update a remote data source:
 * Units of work never interleave or overlap (units of work are collections of
   reads/writes that should have isolation from others)
 
+#### Ungoals
+
+* Support distributed transactions among multiple remote resources, or with
+  the caller's code paths
+* Support all potential failure paths.
+  Exceptions unrelated to the remote resouce make this challenging
+
 ### Key terms
 
-- Read &mdash; an idempotent operation that does not modify any remote state
-- Write &mdash; any operation that modifies remote state
-- Unit of work &mdash; collections of remote operations that have
+- _Remote resource_ &mdash; as an independent remote state needing protection
+  from concurrent updates
+- _Read_ &mdash; an idempotent, non-mutating operation on the remote resource
+- _Write_ &mdash; a mutating operation on the remote resource
+- _Unit of work_ &mdash; a collection of remote operations that have
   "all-or-none" semantics, and do not interleave with other operations or
   units of work
+- _Exception hierarchy_ &mdash; for languages/platforms with exceptions, clients
+  handle application-specific exceptions rather a generic "it failed"
+  exceptions, and should recognize failures related to transactions
 
 ### Assumptions and limitations
 
@@ -95,27 +107,17 @@ remote service.**
 This project _does not_ address distributed transactions;
 it assumes a _single_ data source needing transactions either local or remote.
 
-Terms used include:
-
-- _Clients_ &mdash; treated as separate local threads: in a true distributed
-  scenario these would be multiple processes
-- _Remote resource_ &mdash; treated as an independent "source of truth": in a
-  true distributed scenario this would be a remote service.
-  The same concerns crop up for local, exclusive resources
-- _Exception hierarchy_ &mdash; for languages/platforms with exceptions, clients
-  handle application-specific exceptions rather a generic "it failed"
-  exceptions, and should recognize failures related to transactions
+This project assumes exclusive access to the remote resource.
 
 ### Minimally assumed code library support
 
 - Knowing when readers and writers complete
-- Callers and tests can wait on completion of submitted work
 - A searchable, concurrent-safe queue for requests of remote access
   (The state machine implementation wants to look into the queue, and
   prioritize earlier requests)
 - The implementation can block when looking for next requests (alternative:
-  use a busy-retry loop)
-- This implementation assumes exclusive access to the remote resource
+  a busy-retry loop)
+- Callers and tests can wait on completion of submitted work
 
 ## Design
 
