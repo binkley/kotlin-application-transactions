@@ -60,8 +60,9 @@ Important problems to handle when multiple clients update a remote data source:
     * After A's read but before its write, client B writes data that would 
       change the result of client A's read
     * Ideal is that operations are in this order: Read\[A], Write\[A], Write\[B]
-    * However, interleaving client requests is possible resulting in: Read\[A],
-      Write\[B], Write\[A]
+    * However, mistaken interleaving client requests is possible resulting in:
+      Read\[A], Write\[B], Write\[A].
+      This ordering gives client A wrong results
 - Support for _rollback_.
   A client should be able to undo changes within their transaction without
   effecting other clients
@@ -88,17 +89,18 @@ Important problems to handle when multiple clients update a remote data source:
 ### Assumptions and limitations
 
 This project demonstrates one approach to application-side transactions.
-To keep the example within a single local process, there are some
-abstractions that need translation into:
+Terms used include
 
-- Clients &mdash; treated as separate local threads: in a true distributed
+- _Clients_ &mdash; treated as separate local threads: in a true distributed
   scenario these would be multiple processes
-- Remote resource &mdash; treated as an independent local thread: in a true
-  distributed scenario this would be a remote service
+- _Remote resource_ &mdash; treated as an independent "source of truth": in a
+  true distributed scenario this would be a remote service.
+  The same concerns crop up for local, exclusive resources
 - Exception hierarchy &mdash; for languages/platforms with exceptions, clients
-  handle application-specific exceptions rather a generic "it failed" exception
+  handle application-specific exceptions rather a generic "it failed"
+  exceptions, and should recognize failures related to transactions
 - This project _does not_ address distributed transactions; it assumes a
-  _single_ remote data source service
+  _single_ remote data source service either local or remote
 
 ### Minimally assumed code library support
 
@@ -222,7 +224,7 @@ or failure&mdash;before logging happens.
 
 ## Configuration
 
-There are only two knobs for tweaking behavior:
+There are only three knobs for tweaking behavior:
 
 - `maxWaitForWorkUnitsInSeconds` passed when constructing `RequestProcessor`
   (default 1s).
