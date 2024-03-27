@@ -89,7 +89,10 @@ Important problems to handle when multiple clients update a remote data source:
 ### Assumptions and limitations
 
 This project demonstrates one approach to application-side transactions.
-Terms used include
+**You are nearly always better off using transaction features provided by your
+remote service.**
+
+Terms used include:
 
 - _Clients_ &mdash; treated as separate local threads: in a true distributed
   scenario these would be multiple processes
