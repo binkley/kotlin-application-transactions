@@ -108,15 +108,14 @@ Terms used include:
 
 ### Minimally assumed code library support
 
-- A searchable, concurrent-safe queue for submitting requests for remote
-  processing.
-  The state machine implementation wants to look into the queue
-- The queue can block when looking for next element (alternative: add 
-  busy-retry) and when searching for a matching middle element in the queue
-- A means for exclusive access to the remote resource.
-  This implementation assumes it has exclusive access
+- Knowing when readers and writers complete
 - Callers and tests can wait on completion of submitted work
-- Knowning when readers and writers complete
+- A searchable, concurrent-safe queue for requests of remote access
+  (The state machine implementation wants to look into the queue, and
+  prioritize earlier requests)
+- The implementation can block when looking for next requests (alternative:
+  use a busy-retry loop)
+- This implementation assumes exclusive access to the remote resource
 
 ## Design
 
