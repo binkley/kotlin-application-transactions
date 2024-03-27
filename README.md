@@ -92,6 +92,9 @@ This project demonstrates one approach to application-side transactions.
 **You are nearly always better off using transaction features provided by your
 remote service.**
 
+This project _does not_ address distributed transactions;
+it assumes a _single_ data source needing transactions either local or remote.
+
 Terms used include:
 
 - _Clients_ &mdash; treated as separate local threads: in a true distributed
@@ -99,11 +102,9 @@ Terms used include:
 - _Remote resource_ &mdash; treated as an independent "source of truth": in a
   true distributed scenario this would be a remote service.
   The same concerns crop up for local, exclusive resources
-- Exception hierarchy &mdash; for languages/platforms with exceptions, clients
+- _Exception hierarchy_ &mdash; for languages/platforms with exceptions, clients
   handle application-specific exceptions rather a generic "it failed"
   exceptions, and should recognize failures related to transactions
-- This project _does not_ address distributed transactions; it assumes a
-  _single_ remote data source service either local or remote
 
 ### Minimally assumed code library support
 
